@@ -1,46 +1,109 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
+import {
+  View, ScrollView, StyleSheet, TouchableOpacity,
+  Switch, Modal, Image, Animated, Pressable,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/common/Screen';
-import { AppButton } from '../../src/components/common/AppButton';
 import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useVirtualPlant } from '../../src/hooks/usePlant';
 import { COLORS } from '../../src/constants/colors';
 import { PLANT_STAGES } from '../../src/constants/plantStages';
+import { testLocalNotification } from '../../src/services/pushNotification.service';
 
-type FlowerChoice = 'ship' | 'donate' | null;
+// ── Mascot farewell messages ────────────────────────────────────────────────
+const FAREWELL_MESSAGES = [
+  'Bạn muốn chào tạm biệt rồi sao? 🥺\nCây vẫn sẽ nhớ bạn mỗi ngày...',
+  'Ôi không! Đừng đi vội mà 🌿\nCây đang chờ được chăm sóc tiếp đó!',
+  'Tạm biệt nhé bạn ơi 🍃\nHẹn gặp lại, cây luôn ở đây chờ bạn~',
+  'Nghỉ ngơi một chút cũng được 😊\nNhưng đừng quên quay lại chăm mình nha!',
+];
 
-// ── Setting row ───────────────────────────────────────────────────────────────
+// ── Helper components ────────────────────────────────────────────────────────
+
+const Divider = () => <View style={styles.divider} />;
+
 const SettingRow: React.FC<{
   label: string;
   icon: string;
   right?: React.ReactNode;
   onPress?: () => void;
-}> = ({ label, icon, right, onPress }) => (
+  danger?: boolean;
+}> = ({ label, icon, right, onPress, danger }) => (
   <TouchableOpacity
-    style={sRow.row}
+    style={styles.settingRow}
     onPress={onPress}
-    activeOpacity={onPress ? 0.7 : 1}
+    activeOpacity={onPress ? 0.65 : 1}
     disabled={!onPress}
   >
-    <Text style={sRow.icon}>{icon}</Text>
-    <Text style={sRow.label}>{label}</Text>
-    <View style={sRow.right}>{right ?? <Text style={sRow.arrow}>›</Text>}</View>
+    <View style={[styles.settingIconWrap, danger && styles.settingIconDanger]}>
+      <Text style={styles.settingIcon}>{icon}</Text>
+    </View>
+    <Text style={[styles.settingLabel, danger && styles.settingLabelDanger]}>{label}</Text>
+    <View style={styles.settingRight}>
+      {right ?? <Text style={styles.settingArrow}>›</Text>}
+    </View>
   </TouchableOpacity>
 );
-const sRow = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, gap: 14,
-  },
-  icon: { fontSize: 22, width: 28, textAlign: 'center' },
-  label: { flex: 1, fontSize: 15, color: COLORS.text.primary },
-  right: { alignItems: 'flex-end' },
-  arrow: { fontSize: 20, color: COLORS.text.muted },
-});
+
+const StatBadge: React.FC<{ value: string | number; label: string; color: string }> = ({
+  value, label, color,
+}) => (
+  <View style={styles.statItem}>
+    <Text style={[styles.statValue, { color }]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
+// ── Logout Modal ─────────────────────────────────────────────────────────────
+const LogoutModal: React.FC<{
+  visible: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}> = ({ visible, onCancel, onConfirm }) => {
+  const msg = FAREWELL_MESSAGES[Math.floor(Math.random() * FAREWELL_MESSAGES.length)];
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onCancel}>
+      <Pressable style={styles.modalBackdrop} onPress={onCancel}>
+        <Pressable style={styles.modalCard} onPress={() => {}}>
+          {/* Mascot */}
+          <View style={styles.mascotWrap}>
+            <Image
+              source={require('../../assets/thinking.png')}
+              style={styles.mascotImg}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Message bubble */}
+          <View style={styles.bubble}>
+            <Text style={styles.bubbleText}>{msg}</Text>
+          </View>
+
+          {/* Title */}
+          <Text style={styles.modalTitle}>Đăng xuất?</Text>
+          <Text style={styles.modalSub}>
+            Bạn vẫn có thể quay lại bất cứ lúc nào 🌱
+          </Text>
+
+          {/* Buttons */}
+          <View style={styles.modalBtns}>
+            <TouchableOpacity style={styles.btnCancel} onPress={onCancel} activeOpacity={0.8}>
+              <Text style={styles.btnCancelText}>Ở lại chăm cây</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btnConfirm} onPress={onConfirm} activeOpacity={0.8}>
+              <Text style={styles.btnConfirmText}>Tạm biệt 👋</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+};
 
 // ── Flower choice card ────────────────────────────────────────────────────────
 const ChoiceCard: React.FC<{
@@ -51,143 +114,143 @@ const ChoiceCard: React.FC<{
   subtitle: string;
 }> = ({ selected, onSelect, emoji, title, subtitle }) => (
   <TouchableOpacity
-    style={[cStyle.card, selected && cStyle.cardSelected]}
+    style={[styles.choiceCard, selected && styles.choiceCardSelected]}
     onPress={onSelect}
     activeOpacity={0.8}
   >
-    <Text style={cStyle.emoji}>{emoji}</Text>
-    <View style={cStyle.texts}>
-      <Text style={[cStyle.title, selected && cStyle.titleSelected]}>{title}</Text>
-      <Text style={cStyle.sub}>{subtitle}</Text>
+    <Text style={styles.choiceEmoji}>{emoji}</Text>
+    <View style={styles.choiceTexts}>
+      <Text style={[styles.choiceTitle, selected && styles.choiceTitleSelected]}>{title}</Text>
+      <Text style={styles.choiceSub}>{subtitle}</Text>
     </View>
-    <View style={[cStyle.radio, selected && cStyle.radioSelected]}>
-      {selected && <View style={cStyle.radioDot} />}
+    <View style={[styles.radio, selected && styles.radioSelected]}>
+      {selected && <View style={styles.radioDot} />}
     </View>
   </TouchableOpacity>
 );
-const cStyle = StyleSheet.create({
-  card: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: COLORS.surface,
-    borderRadius: 14, padding: 16,
-    borderWidth: 1.5, borderColor: COLORS.border,
-  },
-  cardSelected: {
-    borderColor: COLORS.green.main,
-    backgroundColor: COLORS.green[50],
-  },
-  emoji: { fontSize: 30 },
-  texts: { flex: 1, gap: 4 },
-  title: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
-  titleSelected: { color: COLORS.green.dark },
-  sub: { fontSize: 12, color: COLORS.text.muted, lineHeight: 18 },
-  radio: {
-    width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: COLORS.border,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  radioSelected: { borderColor: COLORS.green.main },
-  radioDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: COLORS.green.main,
-  },
-});
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title, children,
-}) => (
-  <View style={secStyle.section}>
-    <Text style={secStyle.title}>{title}</Text>
-    <View style={secStyle.body}>{children}</View>
-  </View>
-);
-const secStyle = StyleSheet.create({
-  section: { gap: 12 },
-  title: { fontSize: 13, fontWeight: '700', color: COLORS.text.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
-  body: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-});
-
-// ── Main Profile screen ───────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Profile() {
   const { user, logout } = useAuth();
   const { plant, isLoading } = useVirtualPlant();
-  const [flowerChoice, setFlowerChoice] = useState<FlowerChoice>(null);
+  const [flowerChoice, setFlowerChoice] = useState<'ship' | 'donate' | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const handleLogout = async () => {
-    Alert.alert('Đăng xuất', 'Bạn muốn đăng xuất khỏi Garden Mobile?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Đăng xuất',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/login');
-        },
-      },
-    ]);
+  const handleLogout = () => setShowLogoutModal(true);
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    await logout();
+    router.replace('/login');
   };
 
   if (isLoading) return <LoadingView />;
 
-  const stageLabel = plant ? PLANT_STAGES[plant.status]?.label : '—';
+  const stageInfo = plant ? PLANT_STAGES[plant.status] : null;
+  const initials = (user?.fullName ?? 'B')
+    .split(' ')
+    .map((w) => w[0])
+    .slice(-2)
+    .join('')
+    .toUpperCase();
 
   return (
-    <Screen scroll padded>
-      {/* ── Avatar & name ── */}
-      <View style={styles.avatarSection}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarEmoji}>🧑</Text>
-        </View>
-        <Text style={styles.name}>{user?.fullName ?? 'Bạn'}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{user?.role ?? 'USER'}</Text>
-        </View>
-      </View>
+    <>
+      <LogoutModal
+        visible={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={confirmLogout}
+      />
 
-      <View style={styles.sections}>
-        {/* ── Plant info ── */}
-        {plant && (
-          <Section title="Cây đang trồng">
-            <View style={styles.plantRow}>
-              <PlantAvatar status={plant.status} size="sm" />
-              <View style={styles.plantInfo}>
-                <Text style={styles.plantName}>
-                  {plant.nickname ?? 'Cây chưa đặt tên'}
-                </Text>
-                <Text style={styles.plantDetail}>
-                  {plant.flowerType.name} · {stageLabel}
-                </Text>
-                {plant.realPlant && (
-                  <Text style={styles.plantCode}>
-                    Mã cây: {plant.realPlant.code}
-                  </Text>
-                )}
-              </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Hero header ── */}
+        <LinearGradient
+          colors={['#2D7A4F', '#34C759', '#86EFAC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          {/* Deco blobs */}
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
+          {/* Avatar */}
+          <View style={styles.avatarOuter}>
+            <View style={styles.avatarInner}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
             </View>
-          </Section>
-        )}
-
-        {/* ── Package ── */}
-        <Section title="Gói hoa đồng hành">
-          <View style={styles.packageCard}>
-            <Text style={styles.packageTitle}>🌻 Gói Hoa Hướng Dương Đồng Hành</Text>
-            <Text style={styles.packageDesc}>
-              Sau khi hoa nở, bạn có thể chọn ship về nhà hoặc tặng lại cho người cần.
-            </Text>
           </View>
 
-          <Text style={[styles.choiceLabel, { paddingHorizontal: 16, paddingBottom: 12 }]}>
-            Lựa chọn của bạn sau khi hoa nở
-          </Text>
-          <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}>
+          <Text style={styles.heroName}>{user?.fullName ?? 'Bạn'}</Text>
+          <Text style={styles.heroEmail}>{user?.email}</Text>
+
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>🌿 {user?.role ?? 'USER'}</Text>
+          </View>
+
+          {/* Stats row */}
+          {plant && (
+            <View style={styles.statsRow}>
+              <StatBadge
+                value={stageInfo?.label ?? '—'}
+                label="Giai đoạn"
+                color="#fff"
+              />
+              <View style={styles.statDivider} />
+              <StatBadge
+                value={plant.growthPoint ?? 0}
+                label="Điểm phát triển"
+                color="#fff"
+              />
+              <View style={styles.statDivider} />
+              <StatBadge
+                value={plant.realPlant ? '✓' : '—'}
+                label="Cây thật"
+                color="#fff"
+              />
+            </View>
+          )}
+        </LinearGradient>
+
+        <View style={styles.body}>
+          {/* ── Plant card ── */}
+          {plant && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>🌱 Cây đang trồng</Text>
+              <View style={styles.plantRow}>
+                <PlantAvatar status={plant.status} size="sm" />
+                <View style={styles.plantInfo}>
+                  <Text style={styles.plantName}>
+                    {plant.nickname ?? 'Cây chưa đặt tên'}
+                  </Text>
+                  <Text style={styles.plantDetail}>
+                    {plant.flowerType.name} · {stageInfo?.label}
+                  </Text>
+                  {plant.realPlant && (
+                    <View style={styles.codePill}>
+                      <Text style={styles.codeText}>#{plant.realPlant.code}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ── Package card ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🌻 Gói hoa đồng hành</Text>
+            <View style={styles.packageBanner}>
+              <Text style={styles.packageBannerTitle}>Hoa Hướng Dương Đồng Hành</Text>
+              <Text style={styles.packageBannerDesc}>
+                Sau khi hoa nở, bạn có thể chọn ship về nhà hoặc tặng lại cho người cần.
+              </Text>
+            </View>
+
+            <Text style={styles.choiceLabel}>Lựa chọn của bạn sau khi hoa nở</Text>
             <ChoiceCard
               selected={flowerChoice === 'ship'}
               onSelect={() => setFlowerChoice('ship')}
@@ -195,6 +258,7 @@ export default function Profile() {
               title="Ship về nhà"
               subtitle="Chúng tôi sẽ gửi hoa đến địa chỉ của bạn"
             />
+            <View style={{ height: 10 }} />
             <ChoiceCard
               selected={flowerChoice === 'donate'}
               onSelect={() => setFlowerChoice('donate')}
@@ -206,110 +270,269 @@ export default function Profile() {
               <Text style={styles.choiceSaved}>✓ Đã lưu lựa chọn của bạn</Text>
             )}
           </View>
-        </Section>
 
-        {/* ── Settings ── */}
-        <Section title="Cài đặt">
-          <SettingRow
-            icon="🔔"
-            label="Thông báo nhắc nhở"
-            right={
-              <Switch
-                value={notifEnabled}
-                onValueChange={setNotifEnabled}
-                trackColor={{ true: COLORS.green.main, false: COLORS.border }}
-                thumbColor={COLORS.white}
-              />
-            }
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="🔔"
-            label="Xem thông báo"
-            onPress={() => router.push('/notifications')}
-          />
-          <View style={styles.divider} />
-          <SettingRow icon="ℹ️" label="Về ứng dụng" onPress={() => {}} />
-        </Section>
+          {/* ── Settings card ── */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>⚙️ Cài đặt</Text>
+            <SettingRow
+              icon="🔔"
+              label="Thông báo nhắc nhở"
+              right={
+                <Switch
+                  value={notifEnabled}
+                  onValueChange={setNotifEnabled}
+                  trackColor={{ true: COLORS.green.main, false: COLORS.border }}
+                  thumbColor={COLORS.white}
+                />
+              }
+            />
+            <Divider />
+            <SettingRow
+              icon="📬"
+              label="Xem thông báo"
+              onPress={() => router.push('/notifications')}
+            />
+            <Divider />
+            <SettingRow icon="ℹ️" label="Về ứng dụng" onPress={() => {}} />
+            <Divider />
+            <SettingRow icon="🧪" label="Test thông báo (Local)" onPress={testLocalNotification} />
+          </View>
 
-        {/* ── Disclaimer ── */}
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>
-            🌿 Garden Mobile hỗ trợ self-care và không thay thế tư vấn chuyên gia sức khỏe tâm thần.
-          </Text>
+          {/* ── Disclaimer ── */}
+          <View style={styles.disclaimer}>
+            <Text style={styles.disclaimerText}>
+              🌿 Garden Mobile hỗ trợ self-care và không thay thế tư vấn chuyên gia sức khỏe tâm thần.
+            </Text>
+          </View>
+
+          {/* ── Logout button ── */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* ── Logout ── */}
-        <AppButton
-          title="Đăng xuất"
-          variant="ghost"
-          onPress={handleLogout}
-          style={styles.logoutBtn}
-        />
-      </View>
-    </Screen>
+      </ScrollView>
+    </>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  avatarSection: {
+  scroll: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 48 },
+
+  // Hero
+  hero: {
+    paddingTop: 56,
+    paddingBottom: 36,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 28,
     gap: 6,
+    overflow: 'hidden',
   },
-  avatarCircle: {
-    width: 88, height: 88, borderRadius: 44,
-    backgroundColor: COLORS.green.light,
+  blob1: {
+    position: 'absolute', top: -40, right: -40,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  blob2: {
+    position: 'absolute', bottom: -30, left: -30,
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  avatarOuter: {
+    width: 96, height: 96, borderRadius: 48,
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 12,
+    elevation: 8,
+  },
+  avatarInner: {
+    flex: 1, borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 10,
   },
-  avatarEmoji: { fontSize: 44 },
-  name: { fontSize: 22, fontWeight: '700', color: COLORS.text.primary },
-  email: { fontSize: 14, color: COLORS.text.muted },
-  roleBadge: {
-    backgroundColor: COLORS.green.light,
+  avatarInitials: { fontSize: 36, fontWeight: '800', color: '#fff' },
+  heroName: { fontSize: 22, fontWeight: '800', color: '#fff' },
+  heroEmail: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+  heroBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 14, paddingVertical: 4,
-    borderRadius: 20, marginTop: 4,
+    borderRadius: 20, marginTop: 2,
   },
-  roleText: { fontSize: 12, color: COLORS.green.dark, fontWeight: '600' },
+  heroBadgeText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
-  sections: { gap: 24, paddingBottom: 40 },
-
-  plantRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 16, padding: 16,
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    paddingVertical: 14, paddingHorizontal: 8,
+    alignSelf: 'stretch',
   },
-  plantInfo: { flex: 1, gap: 4 },
+  statItem: { flex: 1, alignItems: 'center', gap: 3 },
+  statValue: { fontSize: 16, fontWeight: '800' },
+  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 4 },
+
+  // Body
+  body: { padding: 20, gap: 16 },
+
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 18,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text.muted, letterSpacing: 0.5 },
+
+  // Plant row
+  plantRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  plantInfo: { flex: 1, gap: 6 },
   plantName: { fontSize: 16, fontWeight: '700', color: COLORS.text.primary },
   plantDetail: { fontSize: 13, color: COLORS.text.secondary },
-  plantCode: { fontSize: 12, color: COLORS.text.muted },
+  codePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.green[100],
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderRadius: 12,
+  },
+  codeText: { fontSize: 11, color: COLORS.green.dark, fontWeight: '600' },
 
-  packageCard: {
-    margin: 16, marginBottom: 0,
+  // Package
+  packageBanner: {
     backgroundColor: '#FFF8E7',
-    borderRadius: 14, padding: 16, gap: 8,
+    borderRadius: 12, padding: 14, gap: 6,
     borderWidth: 1, borderColor: '#FFE082',
   },
-  packageTitle: { fontSize: 15, fontWeight: '700', color: '#7B5800' },
-  packageDesc: { fontSize: 13, color: '#8D6E00', lineHeight: 20 },
-  choiceLabel: { fontSize: 14, color: COLORS.text.secondary, marginTop: 12 },
+  packageBannerTitle: { fontSize: 14, fontWeight: '700', color: '#7B5800' },
+  packageBannerDesc: { fontSize: 12, color: '#8D6E00', lineHeight: 18 },
+  choiceLabel: { fontSize: 13, color: COLORS.text.secondary },
+  choiceCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 14, padding: 14,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+  },
+  choiceCardSelected: {
+    borderColor: COLORS.green.main,
+    backgroundColor: COLORS.green[50],
+  },
+  choiceEmoji: { fontSize: 28 },
+  choiceTexts: { flex: 1, gap: 3 },
+  choiceTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary },
+  choiceTitleSelected: { color: COLORS.green.dark },
+  choiceSub: { fontSize: 12, color: COLORS.text.muted, lineHeight: 18 },
+  radio: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: COLORS.border,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  radioSelected: { borderColor: COLORS.green.main },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.green.main },
   choiceSaved: {
-    fontSize: 13, color: COLORS.green.main,
-    fontWeight: '600', textAlign: 'center',
+    fontSize: 12, color: COLORS.green.main,
+    fontWeight: '600', textAlign: 'center', marginTop: 4,
   },
 
-  divider: { height: 1, backgroundColor: COLORS.border, marginHorizontal: 16 },
+  // Settings
+  settingRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 13,
+  },
+  settingIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: COLORS.green[50],
+    justifyContent: 'center', alignItems: 'center',
+  },
+  settingIconDanger: { backgroundColor: '#FFF0F0' },
+  settingIcon: { fontSize: 18 },
+  settingLabel: { flex: 1, fontSize: 15, color: COLORS.text.primary },
+  settingLabelDanger: { color: COLORS.danger },
+  settingRight: { alignItems: 'flex-end' },
+  settingArrow: { fontSize: 20, color: COLORS.text.muted },
 
+  divider: { height: 1, backgroundColor: COLORS.border },
+
+  // Disclaimer
   disclaimer: {
     backgroundColor: COLORS.green[50],
-    borderRadius: 14, padding: 16,
+    borderRadius: 14, padding: 14,
     borderLeftWidth: 3, borderLeftColor: COLORS.green.main,
   },
-  disclaimerText: { fontSize: 13, color: COLORS.text.secondary, lineHeight: 22 },
+  disclaimerText: { fontSize: 12, color: COLORS.text.secondary, lineHeight: 20 },
 
+  // Logout
   logoutBtn: {
-    borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: 14,
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFCDD2',
+    backgroundColor: '#FFF5F5',
   },
+  logoutText: { fontSize: 15, fontWeight: '700', color: COLORS.danger },
+
+  // Modal
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingHorizontal: 24, paddingBottom: 28, paddingTop: 0,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15, shadowRadius: 24,
+    elevation: 16,
+    gap: 10,
+  },
+  mascotWrap: {
+    marginTop: -48,
+    marginBottom: 4,
+    width: 130, height: 130,
+    borderRadius: 65,
+    backgroundColor: COLORS.green[50],
+    borderWidth: 3, borderColor: COLORS.green.light,
+    overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  mascotImg: { width: 120, height: 120 },
+  bubble: {
+    backgroundColor: COLORS.green[50],
+    borderRadius: 14,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderWidth: 1, borderColor: COLORS.green.light,
+    alignSelf: 'stretch',
+  },
+  bubbleText: {
+    fontSize: 14, color: COLORS.text.secondary,
+    lineHeight: 22, textAlign: 'center', fontStyle: 'italic',
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text.primary },
+  modalSub: { fontSize: 13, color: COLORS.text.muted, textAlign: 'center' },
+  modalBtns: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 4 },
+  btnCancel: {
+    flex: 1, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: COLORS.green.main,
+    alignItems: 'center',
+  },
+  btnCancelText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  btnConfirm: {
+    flex: 1, borderRadius: 14, paddingVertical: 14,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1, borderColor: '#FFCDD2',
+    alignItems: 'center',
+  },
+  btnConfirmText: { fontSize: 14, fontWeight: '600', color: COLORS.danger },
 });

@@ -30,7 +30,7 @@ export default function Tasks() {
     const emoji = RESOURCE_EMOJI[completedTask.rewardResource] ?? '';
     const resourceLabel = RESOURCES[completedTask.rewardResource]?.label ?? '';
     Alert.alert(
-      'Cây vui lắm! 🌱',
+      'Cây vui lắm!',
       `Cây đã nhận thêm ${emoji} ${resourceLabel} từ bạn hôm nay.\n+${completedTask.growthReward} điểm phát triển`,
       [{ text: 'Tuyệt vời!', style: 'default' }],
     );

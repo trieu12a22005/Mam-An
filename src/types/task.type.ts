@@ -10,4 +10,5 @@ export interface CareTask {
   verifyType: "SELF_CONFIRM" | "TIMER" | "OPTIONAL_PHOTO";
   durationSeconds?: number;
   completedToday: boolean;
+  characterImageUrl?: string;   // URL ảnh nhân vật riêng của task (Cloudinary)
 }

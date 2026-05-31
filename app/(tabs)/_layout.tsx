@@ -1,7 +1,7 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/colors';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -47,7 +47,13 @@ export default function TabsLayout() {
         options={{
           title: 'Vườn',
           tabBarIcon: ({ focused }) => (
-            <TabIconEmoji emoji="🌱" focused={focused} />
+            <Image
+              source={require('../../assets/image1.png')}
+              style={[
+                { width: 24, height: 24, borderRadius: 12, opacity: 0.5 },
+                focused && { opacity: 1 }
+              ]}
+            />
           ),
         }}
       />
@@ -56,7 +62,13 @@ export default function TabsLayout() {
         options={{
           title: 'Nhiệm vụ',
           tabBarIcon: ({ focused }) => (
-            <TabIconEmoji emoji="✅" focused={focused} />
+            <Image
+              source={require('../../assets/task.png')}
+              style={[
+                { width: 24, height: 24, opacity: 0.5 },
+                focused && { opacity: 1 }
+              ]}
+            />
           ),
         }}
       />
@@ -74,7 +86,13 @@ export default function TabsLayout() {
         options={{
           title: 'Nhật ký',
           tabBarIcon: ({ focused }) => (
-            <TabIconEmoji emoji="📖" focused={focused} />
+            <Image
+              source={require('../../assets/diary.png')}
+              style={[
+                { width: 24, height: 24, opacity: 0.5 },
+                focused && { opacity: 1 }
+              ]}
+            />
           ),
         }}
       />
@@ -83,7 +101,13 @@ export default function TabsLayout() {
         options={{
           title: 'Hồ sơ',
           tabBarIcon: ({ focused }) => (
-            <TabIconEmoji emoji="👤" focused={focused} />
+            <Image
+              source={require('../../assets/profile.png')}
+              style={[
+                { width: 24, height: 24, opacity: 0.5 },
+                focused && { opacity: 1 }
+              ]}
+            />
           ),
         }}
       />

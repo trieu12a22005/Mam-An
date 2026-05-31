@@ -1,8 +1,18 @@
-export type MoodLevel = "VERY_BAD" | "BAD" | "NORMAL" | "GOOD" | "VERY_GOOD";
+export type MoodType =
+  | "HAPPY"
+  | "CALM"
+  | "NORMAL"
+  | "SAD"
+  | "ANXIOUS"
+  | "TIRED";
+
+/** @deprecated — dùng MoodType thay thế */
+export type MoodLevel = MoodType;
 
 export interface MoodJournal {
   id: string;
-  mood: MoodLevel;
+  mood: MoodType;
   note?: string;
+  aiReply?: string;
   createdAt: string;
 }

@@ -12,6 +12,7 @@ interface ApiCareTask {
   verifyType: 'SELF_CONFIRM' | 'TIMER' | 'OPTIONAL_PHOTO';
   durationSeconds?: number;
   isActive: boolean;
+  characterImageUrl?: string;
 }
 
 interface CareTaskLog {
@@ -23,13 +24,13 @@ const mapTask = (apiTask: ApiCareTask, completedIds: Set<string>): CareTask => (
   id: apiTask.id,
   title: apiTask.title,
   description: apiTask.description,
-  type: apiTask.type as CareTask['type'],
   rewardResource: apiTask.rewardResource as CareTask['rewardResource'],
   rewardAmount: apiTask.rewardAmount,
   growthReward: apiTask.growthReward,
   verifyType: apiTask.verifyType,
   durationSeconds: apiTask.durationSeconds,
   completedToday: completedIds.has(apiTask.id),
+  characterImageUrl: apiTask.characterImageUrl,
 });
 
 export const taskService = {

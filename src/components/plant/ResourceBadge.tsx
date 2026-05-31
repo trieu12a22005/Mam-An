@@ -1,6 +1,6 @@
 import { AppText as Text } from '../common/AppText';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { PlantResourceType } from '../../types/plant.type';
 import { RESOURCES } from '../../constants/resources';
 import { COLORS } from '../../constants/colors';
@@ -12,12 +12,12 @@ interface ResourceBadgeProps {
 }
 
 const RESOURCE_EMOJI: Record<PlantResourceType, string> = {
-  WATER:      '💧',
-  SUNLIGHT:   '☀️',
+  WATER: '💧',
+  SUNLIGHT: '☀️',
   FERTILIZER: '🌿',
-  AIR:        '🌬️',
-  LOVE:       '💚',
-  DEW:        '✨',
+  AIR: '🌬️',
+  LOVE: '💚',
+  DEW: '✨',
 };
 
 export const ResourceBadge: React.FC<ResourceBadgeProps> = ({
@@ -37,7 +37,19 @@ export const ResourceBadge: React.FC<ResourceBadgeProps> = ({
         { backgroundColor: resource.color + '22' },
       ]}
     >
-      <Text style={isSmall ? styles.emojiSm : styles.emoji}>{emoji}</Text>
+      {type === 'FERTILIZER' ? (
+        <Image
+          source={require('../../../assets/phan_bon.png')}
+          style={isSmall ? { width: 16, height: 16, borderRadius: 4 } : { width: 26, height: 26, borderRadius: 6 }}
+        />
+      ) : type === 'DEW' ? (
+        <Image
+          source={require('../../../assets/suong_mai.png')}
+          style={isSmall ? { width: 16, height: 16, borderRadius: 4 } : { width: 26, height: 26, borderRadius: 6 }}
+        />
+      ) : (
+        <Text style={isSmall ? styles.emojiSm : styles.emoji}>{emoji}</Text>
+      )}
       <Text
         style={[
           styles.amount,

@@ -1,6 +1,6 @@
 import { AppText as Text } from '../common/AppText';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { PlantStatus } from '../../types/plant.type';
 import { COLORS } from '../../constants/colors';
 import { PLANT_STAGES } from '../../constants/plantStages';
@@ -27,10 +27,16 @@ interface PlantAvatarProps {
   status: PlantStatus;
   size?: 'sm' | 'md' | 'lg';
   nickname?: string;
+  /** flowerType từ VirtualPlant — dùng để hiển thị ảnh riêng theo loài & giai đoạn */
+  flowerType?: {
+    imageUrl?: string;
+    stageImages?: Partial<Record<PlantStatus, string>>;
+  };
+  onRename?: () => void;
 }
 
 const SIZES = {
-  sm: { container: 72, emoji: 36 },
+  sm: { container: 72,  emoji: 36 },
   md: { container: 120, emoji: 60 },
   lg: { container: 160, emoji: 80 },
 };
@@ -39,11 +45,18 @@ export const PlantAvatar: React.FC<PlantAvatarProps> = ({
   status,
   size = 'md',
   nickname,
+  flowerType,
+  onRename,
 }) => {
   const dim = SIZES[size];
-  const emoji = STAGE_EMOJI[status];
   const bg = STAGE_BG[status];
   const stageName = PLANT_STAGES[status]?.label ?? status;
+
+  // Ưu tiên: ảnh giai đoạn riêng → ảnh chung của loài → emoji
+  const imageUrl =
+    flowerType?.stageImages?.[status] ??
+    flowerType?.imageUrl ??
+    null;
 
   return (
     <View style={styles.wrapper}>
@@ -71,15 +84,37 @@ export const PlantAvatar: React.FC<PlantAvatarProps> = ({
           },
         ]}
       >
-        <Text style={{ fontSize: dim.emoji, lineHeight: dim.emoji * 1.2 }}>
-          {emoji}
-        </Text>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={{
+              width: dim.emoji * 1.2,
+              height: dim.emoji * 1.2,
+              borderRadius: (dim.emoji * 1.2) / 2,
+            }}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={{ fontSize: dim.emoji * 0.7 }}>
+            {STAGE_EMOJI[status]}
+          </Text>
+        )}
       </View>
 
       {/* Nickname & stage label */}
       {size !== 'sm' && (
         <View style={styles.labels}>
-          {nickname && <Text style={styles.nickname}>{nickname}</Text>}
+          {onRename ? (
+            <TouchableOpacity onPress={onRename} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {nickname ? (
+                <Text style={styles.nickname}>{nickname} <Text style={{fontSize: 14, color: COLORS.green.main}}>✏️</Text></Text>
+              ) : (
+                <Text style={[styles.nickname, { color: COLORS.green.main, fontSize: 14 }]}>+ Đặt tên cây</Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            nickname ? <Text style={styles.nickname}>{nickname}</Text> : null
+          )}
           <Text style={styles.stageLabel}>{stageName}</Text>
         </View>
       )}

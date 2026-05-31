@@ -1,6 +1,6 @@
 import { AppText as Text } from '../src/components/common/AppText';
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
 import { AppInput } from '../src/components/common/AppInput';
@@ -47,7 +47,8 @@ export default function Register() {
       await register(fullName.trim(), email.trim(), password);
       router.replace('/(tabs)/home');
     } catch (err: any) {
-      setErrors({ general: err.message ?? 'Đăng ký thất bại, vui lòng thử lại.' });
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Đăng ký thất bại, vui lòng thử lại.';
+      setErrors({ general: msg });
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export default function Register() {
     <Screen scroll padded backgroundColor={COLORS.background}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.logo}>🌱</Text>
+        <Image source={require('../assets/image1.png')} style={{ width: 80, height: 80, borderRadius: 40, marginBottom: 12 }} />
         <Text style={styles.appName}>Garden Mobile</Text>
         <Text style={styles.subtitle}>Bắt đầu hành trình{'\n'}của bạn hôm nay.</Text>
       </View>

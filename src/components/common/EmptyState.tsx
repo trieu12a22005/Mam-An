@@ -1,6 +1,6 @@
 import { AppText as Text } from './AppText';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { COLORS } from '../../constants/colors';
 
 interface EmptyStateProps {
@@ -16,7 +16,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      <Image source={require('../../../assets/image1.png')} style={{ width: 64, height: 64, borderRadius: 32, marginBottom: 16 }} />
       <Text style={styles.title}>{title}</Text>
       {description && <Text style={styles.description}>{description}</Text>}
     </View>

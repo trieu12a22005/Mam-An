@@ -1,17 +1,21 @@
 import { AppText as Text } from '../../src/components/common/AppText';
-import React from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Alert, Modal, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { PlantProgress } from '../../src/components/plant/PlantProgress';
 import { ResourceGrid } from '../../src/components/plant/ResourceGrid';
+import { CareEffect, CareEffectHandle } from '../../src/components/plant/CareEffect';
+import { PlantActionSheet, ACTION_COST } from '../../src/components/plant/PlantActionSheet';
 import { TaskCard } from '../../src/components/task/TaskCard';
 import { Screen } from '../../src/components/common/Screen';
 import { LoadingView } from '../../src/components/common/LoadingView';
+import { Companion } from '../../src/components/common/Companion';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useVirtualPlant, usePlantUpdates } from '../../src/hooks/usePlant';
 import { useTasks } from '../../src/hooks/useTasks';
 import { COLORS } from '../../src/constants/colors';
+import { PlantResourceType } from '../../src/types/plant.type';
 import { formatRelativeTime } from '../../src/utils/date';
 
 // ── Section header ───────────────────────────────────────────────────────────
@@ -34,40 +38,72 @@ const SectionHeader: React.FC<{
 export default function Home() {
   const { user } = useAuth();
   const {
-    plant, isLoading: plantLoading,
-    hasNoPlant, updatePlantAfterTask,
+    plant, stage, stageProgress,
+    isLoading: plantLoading,
+    hasNoPlant, updatePlantAfterTask, spendResource, renamePlant,
   } = useVirtualPlant();
   const { data: updates = [] } = usePlantUpdates();
-  const { pendingTasks, completeTask, isLoading: tasksLoading } = useTasks();
+  const { pendingTasks, completedTasks, completeTask, isLoading: tasksLoading } = useTasks();
+
+  const careEffectRef = useRef<CareEffectHandle>(null);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  
+  const [renameVisible, setRenameVisible] = useState(false);
+  const [newName, setNewName] = useState('');
+
+  const [plantMessage, setPlantMessage] = useState<string | null>(null);
 
   const latestUpdate = updates[0];
 
+  // ── Hoàn thành task: chỉ lưu tài nguyên, không trigger hiệu ứng ────────────
   const handleCompleteTask = async (taskId: string) => {
-    const completedTask = await completeTask(taskId);
+    const completedTask = await completeTask(taskId, plant?.id);
     if (completedTask) {
       updatePlantAfterTask(completedTask);
-      const resource = completedTask.rewardResource;
-      const emojis: Record<string, string> = {
+
+      const EMOJI: Record<string, string> = {
         WATER: '💧', SUNLIGHT: '☀️', FERTILIZER: '🌿',
         AIR: '🌬️', LOVE: '💚', DEW: '✨',
       };
       Alert.alert(
-        'Cây vui lắm! 🌱',
-        `Cây đã nhận thêm ${emojis[resource] ?? ''} từ bạn hôm nay.`,
-        [{ text: 'Tuyệt!', style: 'default' }],
+        'Tài nguyên đã được lưu! 🌿',
+        `Bạn kiếm được ${EMOJI[completedTask.rewardResource] ?? ''} +${completedTask.rewardAmount} ${completedTask.rewardResource}.\nNhấn vào cây để chăm sóc nó nhé!`,
+        [{ text: 'OK', style: 'default' }],
       );
     }
   };
 
+  // ── Người dùng chọn hành động chăm cây ──────────────────────────────────────
+  const handlePlantAction = (resourceType: PlantResourceType) => {
+    const spent = spendResource(
+      resourceType, 
+      ACTION_COST,
+      (aiMsg) => {
+        if (aiMsg) {
+          setPlantMessage(aiMsg);
+          setTimeout(() => setPlantMessage(null), 5000);
+        }
+      },
+      (errMsg) => {
+        setPlantMessage(errMsg);
+        setTimeout(() => setPlantMessage(null), 4000);
+      }
+    );
+    if (!spent) return; // PlantActionSheet đã xử lý thông báo lỗi bên trong
+
+    // Kích hoạt hiệu ứng trên cây
+    careEffectRef.current?.trigger(resourceType);
+  };
+
   if (plantLoading) return <LoadingView message="Đang tải vườn của bạn..." />;
 
-  // User chưa có cây ảo — hiển thị màn mời bắt đầu
+  // User chưa có cây ảo
   if (hasNoPlant) {
     return (
       <Screen scroll={false} padded>
         <View style={styles.noPlantContainer}>
-          <Text style={styles.noPlantEmoji}>🌱</Text>
-          <Text style={styles.noPlantTitle}>Bận chưa có cây nào</Text>
+          <Companion context="no_plant" style={{ marginBottom: 16 }} />
+          <Text style={styles.noPlantTitle}>Bạn chưa có cây nào</Text>
           <Text style={styles.noPlantDesc}>
             Hãy chọn một loại hoa để bắt đầu hành trình chăm sóc của bạn.
           </Text>
@@ -94,8 +130,8 @@ export default function Home() {
             <Text style={styles.greeting}>
               Xin chào, {user?.fullName?.split(' ').pop() ?? 'bạn'} 👋
             </Text>
-            <Text style={styles.motivate}>
-              Hôm nay mình làm một việc nhỏ thôi nhé. 🌿
+            <Text style={styles.greetingSubtitle}>
+              Hôm nay mình chăm cây một chút nhé 🌿
             </Text>
           </View>
           <TouchableOpacity
@@ -106,32 +142,121 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Plant card ── */}
-        {plant && (
-          <View style={styles.plantCard}>
-            <PlantAvatar
-              status={plant.status}
-              nickname={plant.nickname}
-              size="lg"
+        {/* ── Companion ── */}
+        <Companion
+          context={
+            tasksLoading ? 'loading'
+            : pendingTasks.length === 0 ? 'all_done'
+            : latestUpdate ? 'garden_update'
+            : 'has_tasks'
+          }
+          style={styles.companionSection}
+        />
+
+        {/* ── Plant card (tap để mở ActionSheet) ── */}
+        {plant && stage && stageProgress && (
+          <>
+            <TouchableOpacity
+              style={styles.plantCard}
+              onPress={() => setShowActionSheet(true)}
+              activeOpacity={0.92}
+            >
+              {/* Hiệu ứng particle nằm trên avatar */}
+              <View style={styles.avatarWrapper}>
+                {plantMessage && (
+                  <View style={styles.speechBubble}>
+                    <Text style={styles.speechText}>{plantMessage}</Text>
+                    <View style={styles.speechTail} />
+                  </View>
+                )}
+                <PlantAvatar
+                  status={stage}
+                  nickname={plant.nickname}
+                  size="lg"
+                  flowerType={plant.flowerType}
+                  onRename={() => {
+                    setNewName(plant.nickname || '');
+                    setRenameVisible(true);
+                  }}
+                />
+                <CareEffect ref={careEffectRef} />
+              </View>
+
+              <View style={styles.careBtn}>
+                <Text style={styles.careBtnText}>Chăm cây hôm nay</Text>
+              </View>
+
+              {/* Streak */}
+              <View style={styles.streak}>
+                {plant.streakCount === 0 ? (
+                  <>
+                    <Text style={styles.streakEmoji}>✨</Text>
+                    <Text style={styles.streakText}>Hành trình vừa bắt đầu</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.streakEmoji}>🌱</Text>
+                    <Text style={styles.streakText}>Bạn đã quay lại {plant.streakCount} ngày</Text>
+                  </>
+                )}
+              </View>
+
+              <PlantProgress
+                stage={stage}
+                stageProgress={stageProgress}
+                growthPoint={plant.growthPoint}
+              />
+            </TouchableOpacity>
+
+            {/* Bottom sheet chăm cây */}
+            <PlantActionSheet
+              visible={showActionSheet}
+              resources={plant.resources}
+              onClose={() => setShowActionSheet(false)}
+              onAction={handlePlantAction}
             />
 
-            <View style={styles.streak}>
-              <Text style={styles.streakEmoji}>🔥</Text>
-              <Text style={styles.streakText}>{plant.streakCount} ngày liên tiếp</Text>
-            </View>
-
-            <PlantProgress
-              growthPoint={plant.growthPoint}
-              maxGrowthPoint={plant.maxGrowthPoint}
-              status={plant.status}
-            />
-          </View>
+            {/* Modal đổi tên cây */}
+            <Modal visible={renameVisible} transparent animationType="fade">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Đặt tên cho cây</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={newName}
+                    onChangeText={setNewName}
+                    placeholder="Ví dụ: Mầm Nhỏ, Bé Nắng..."
+                    autoFocus
+                    maxLength={50}
+                  />
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity onPress={() => setRenameVisible(false)} style={styles.modalBtn}>
+                      <Text style={styles.modalCancel}>Hủy</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.modalBtn}
+                      onPress={() => { 
+                        if (newName.trim()) {
+                          renamePlant(newName.trim()); 
+                        }
+                        setRenameVisible(false); 
+                      }}
+                    >
+                      <Text style={styles.modalSave}>Lưu</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          </>
         )}
+
+
 
         {/* ── Resources ── */}
         {plant && (
           <View style={styles.section}>
-            <SectionHeader title="Tài nguyên của cây" />
+            <SectionHeader title="Tài nguyên tích lũy" />
             <ResourceGrid resources={plant.resources} />
           </View>
         )}
@@ -145,31 +270,61 @@ export default function Home() {
           />
           {tasksLoading ? (
             <Text style={styles.loadingText}>Đang tải nhiệm vụ...</Text>
-          ) : pendingTasks.length === 0 ? (
-            <View style={styles.emptyTasks}>
-              <Text style={styles.emptyIcon}>🎉</Text>
-              <Text style={styles.emptyText}>
-                Bạn đã hoàn thành tất cả nhiệm vụ hôm nay!
-              </Text>
-            </View>
           ) : (
-            <View style={styles.taskList}>
-              {pendingTasks.slice(0, 2).map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onComplete={handleCompleteTask}
-                />
-              ))}
-              {pendingTasks.length > 2 && (
-                <TouchableOpacity
-                  style={styles.moreBtn}
-                  onPress={() => router.push('/(tabs)/tasks')}
-                >
-                  <Text style={styles.moreBtnText}>
-                    +{pendingTasks.length - 2} nhiệm vụ nữa đang chờ
+            <View style={{ gap: 16 }}>
+              {/* Danh sách task chờ */}
+              {pendingTasks.length > 0 && (
+                <View style={styles.taskList}>
+                  {pendingTasks.slice(0, 2).map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={handleCompleteTask}
+                    />
+                  ))}
+                  {pendingTasks.length > 2 && (
+                    <TouchableOpacity
+                      style={styles.moreBtn}
+                      onPress={() => router.push('/(tabs)/tasks')}
+                    >
+                      <Text style={styles.moreBtnText}>
+                        +{pendingTasks.length - 2} nhiệm vụ nữa đang chờ
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Hành trình hôm nay */}
+              {completedTasks.length > 0 && (
+                <View style={styles.journeyCard}>
+                  <Text style={styles.journeyTitle}>Hôm nay bạn đã chăm mình bằng:</Text>
+                  <View style={styles.journeyList}>
+                    {completedTasks.map((task) => (
+                      <View key={task.id} style={styles.journeyRow}>
+                        <Text style={styles.journeyCheck}>✓</Text>
+                        <Text style={styles.journeyItem}>{task.title}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {pendingTasks.length === 0 && (
+                    <View style={styles.journeySummaryBox}>
+                      <Text style={styles.journeySummaryText}>
+                        Hôm nay bạn đã làm {completedTasks.length} việc nhỏ cho bản thân. Vậy là tốt rồi 💚
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Empty state dự phòng (nếu list task rỗng 100%) */}
+              {pendingTasks.length === 0 && completedTasks.length === 0 && (
+                <View style={styles.emptyTasks}>
+                  <Text style={styles.emptyIcon}>🎉</Text>
+                  <Text style={styles.emptyText}>
+                    Bạn chưa có nhiệm vụ nào cho hôm nay!
                   </Text>
-                </TouchableOpacity>
+                </View>
               )}
             </View>
           )}
@@ -180,11 +335,13 @@ export default function Home() {
           <View style={styles.section}>
             <SectionHeader title="Cập nhật từ nhà vườn 📸" />
             <View style={styles.updateCard}>
-              <Image
-                source={{ uri: latestUpdate.imageUrl }}
-                style={styles.updateImage}
-                resizeMode="cover"
-              />
+              {latestUpdate.imageUrl ? (
+                <Image
+                  source={{ uri: latestUpdate.imageUrl }}
+                  style={styles.updateImage}
+                  resizeMode="cover"
+                />
+              ) : null}
               <View style={styles.updateInfo}>
                 <Text style={styles.updateNote} numberOfLines={2}>
                   {latestUpdate.note ?? 'Cây của bạn đang lớn lên từng ngày...'}
@@ -210,6 +367,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 20,
   },
+  companionSection: { alignSelf: 'center' },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -220,18 +378,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text.primary,
   },
-  motivate: {
+  greetingSubtitle: {
     fontSize: 13,
-    color: COLORS.text.muted,
-    marginTop: 4,
+    color: '#6F8F78',
+    marginTop: 2,
   },
   bellBtn: {
-    width: 44, height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.green.light,
+    width: 40, height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F2F7EF',
     justifyContent: 'center', alignItems: 'center',
   },
-  bell: { fontSize: 20 },
+  bell: { fontSize: 17 },
 
   noPlantContainer: {
     flex: 1,
@@ -240,7 +398,6 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 16,
   },
-  noPlantEmoji: { fontSize: 72, marginBottom: 8 },
   noPlantTitle: {
     fontSize: 22, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center',
   },
@@ -254,33 +411,87 @@ const styles = StyleSheet.create({
   },
   startBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
+  // ── Plant card ─────────────────────────────────────────────────────────────
   plantCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E8F3E8',
+  },
+  avatarWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    paddingTop: 40, // khoảng trống cho bong bóng chat
+  },
+  speechBubble: {
+    position: 'absolute',
+    top: -10,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    zIndex: 10,
+    shadowColor: '#143D25',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    maxWidth: 220,
+    borderWidth: 1.5,
+    borderColor: '#E8F3E8',
+  },
+  speechText: {
+    fontSize: 14,
+    color: '#143D25',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  speechTail: {
+    position: 'absolute',
+    bottom: -8,
+    alignSelf: 'center',
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#fff',
+  },
+  careBtn: {
+    backgroundColor: '#143D25',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  careBtnText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   streak: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#F0FAF0',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  streakEmoji: { fontSize: 16 },
-  streakText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#E65100',
-  },
+  streakEmoji: { fontSize: 14 },
+  streakText: { fontSize: 13, fontWeight: '600', color: COLORS.green.dark },
 
   section: { gap: 12 },
   sectionHeader: {
@@ -288,16 +499,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.text.primary,
-  },
-  sectionAction: {
-    fontSize: 13,
-    color: COLORS.green.main,
-    fontWeight: '600',
-  },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text.primary },
+  sectionAction: { fontSize: 13, color: COLORS.green.main, fontWeight: '600' },
 
   loadingText: { color: COLORS.text.muted, fontSize: 14 },
   emptyTasks: {
@@ -306,19 +509,55 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   emptyIcon: { fontSize: 40 },
-  emptyText: {
-    fontSize: 14, color: COLORS.text.muted, textAlign: 'center',
-  },
+  emptyText: { fontSize: 14, color: COLORS.text.muted, textAlign: 'center' },
   taskList: { gap: 12 },
   moreBtn: {
     backgroundColor: COLORS.green.light,
     borderRadius: 12, height: 44,
     justifyContent: 'center', alignItems: 'center',
   },
-  moreBtnText: {
-    color: COLORS.green.dark,
-    fontWeight: '600',
+  moreBtnText: { color: COLORS.green.dark, fontWeight: '600', fontSize: 14 },
+
+  journeyCard: {
+    backgroundColor: '#F8FAF8',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8F3E8',
+  },
+  journeyTitle: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#143D25',
+    marginBottom: 10,
+  },
+  journeyList: { gap: 6 },
+  journeyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  journeyCheck: {
+    color: '#4ADE80',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  journeyItem: {
+    fontSize: 13,
+    color: '#6F8F78',
+  },
+  journeySummaryBox: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F3E8',
+  },
+  journeySummaryText: {
+    fontSize: 13,
+    color: '#143D25',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   updateCard: {
@@ -333,10 +572,56 @@ const styles = StyleSheet.create({
   },
   updateImage: { width: '100%', height: 160 },
   updateInfo: { padding: 14, gap: 4 },
-  updateNote: {
-    fontSize: 14, color: COLORS.text.secondary, lineHeight: 22,
+  updateNote: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 22 },
+  updateTime: { fontSize: 12, color: COLORS.text.muted },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  updateTime: {
-    fontSize: 12, color: COLORS.text.muted,
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#143D25',
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1.5,
+    borderColor: '#E8F3E8',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: '#F8FAF8',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 16,
+    marginTop: 4,
+  },
+  modalBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  modalCancel: {
+    fontSize: 15,
+    color: '#6F8F78',
+    fontWeight: '600',
+  },
+  modalSave: {
+    fontSize: 15,
+    color: '#4ADE80',
+    fontWeight: '700',
   },
 });

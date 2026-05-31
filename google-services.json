@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "563517073045",
+    "project_id": "mam-an",
+    "storage_bucket": "mam-an.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563517073045:android:bfd549e5e1e1e553b29d9c",
+        "android_client_info": {
+          "package_name": "com.maman.garden"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfG0x383LFZpVl5Bx4c3vOc3kAfZ6gM_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

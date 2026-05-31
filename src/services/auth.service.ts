@@ -1,33 +1,35 @@
 import axiosClient from '../api/axiosClient';
 import { tokenStorage } from '../storage/tokenStorage';
-import { AuthUser } from '../types/auth.type';
+import type { User } from '../types/auth.type';
 
 // ── Response shapes từ backend ────────────────────────────────────────────────
-// POST /auth/login  → { message, accessToken, user }
+// POST /auth/login  → { message, accessToken, refreshToken, user }
 interface LoginResponse {
   message: string;
   accessToken: string;
-  user: AuthUser;
+  refreshToken: string;
+  user: User;
 }
 
 // GET /auth/me  → { user }
 interface MeResponse {
-  user: AuthUser;
+  user: User;
 }
 
 // POST /auth/register → { message, user }
 interface RegisterResponse {
   message: string;
-  user: AuthUser;
+  user: User;
 }
 
 export const authService = {
   /** POST /auth/login — lưu accessToken vào SecureStore */
-  login: async (email: string, password: string): Promise<AuthUser> => {
+  login: async (email: string, password: string): Promise<User> => {
     const res = await axiosClient.post<LoginResponse>('/auth/login', { email, password });
-    const { accessToken, user } = res.data;
+    const { accessToken, refreshToken, user } = res.data;
     if (!accessToken) throw new Error('No access token in login response');
-    await tokenStorage.setAccessToken(accessToken);
+    // Lưu cả accessToken lẫn refreshToken để interceptor có thể refresh sau
+    await tokenStorage.saveTokens(accessToken, refreshToken ?? '');
     return user;
   },
 
@@ -42,7 +44,7 @@ export const authService = {
   },
 
   /** GET /auth/me — khôi phục session từ token đã lưu */
-  restoreSession: async (): Promise<AuthUser | null> => {
+  restoreSession: async (): Promise<User | null> => {
     const token = await tokenStorage.getAccessToken();
     if (!token) return null;
     try {
@@ -54,10 +56,12 @@ export const authService = {
     }
   },
 
-  /** POST /auth/logout — xóa token local */
+  /** POST /auth/logout — xóa token local và invalidate refreshToken trên server */
   logout: async (): Promise<void> => {
     try {
-      await axiosClient.post('/auth/logout');
+      const refreshToken = await tokenStorage.getRefreshToken();
+      // Gửi refreshToken trong body vì mobile không gửi cookie
+      await axiosClient.post('/auth/logout', refreshToken ? { refreshToken } : {});
     } finally {
       await tokenStorage.clearAll();
     }

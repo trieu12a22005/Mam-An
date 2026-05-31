@@ -4,96 +4,144 @@ import { View, StyleSheet } from 'react-native';
 import { PlantStatus } from '../../types/plant.type';
 import { PLANT_STAGES } from '../../constants/plantStages';
 import { COLORS } from '../../constants/colors';
+import { StageProgress } from '../../hooks/usePlant';
 
 interface PlantProgressProps {
-  growthPoint: number;
-  maxGrowthPoint: number;
-  status: PlantStatus;
+  stage: PlantStatus;
+  stageProgress: StageProgress;
+  growthPoint?: number;
 }
 
 export const PlantProgress: React.FC<PlantProgressProps> = ({
+  stage,
+  stageProgress,
   growthPoint,
-  maxGrowthPoint,
-  status,
 }) => {
-  const percentage = Math.min((growthPoint / maxGrowthPoint) * 100, 100);
-  const stageInfo = PLANT_STAGES[status];
-  const stageColor = COLORS.stages[status] ?? COLORS.green.main;
+  if (!stageProgress) return null;
 
-  // Determine next stage label
-  const stageOrder: PlantStatus[] = ['SEED', 'SPROUT', 'GROWING', 'BUDDING', 'BLOOMING'];
-  const currentIdx = stageOrder.indexOf(status);
-  const nextStage = stageOrder[currentIdx + 1];
+  const stageInfo = PLANT_STAGES[stage];
+  const { pct, daysLeft, daysInStage, daysTotal, nextStage } = stageProgress;
+
   const nextLabel = nextStage ? PLANT_STAGES[nextStage]?.label : null;
-  const pointsToNext = nextStage
-    ? Math.max(0, PLANT_STAGES[nextStage].threshold - growthPoint)
-    : 0;
+
+  // ── Thông điệp nhẹ nhàng theo ngữ cảnh ───────────────────────────────────
+  const getMessage = (): string => {
+    if (daysTotal === 0) return 'Cây đang phát triển theo nhịp riêng của mình 🌸';
+    if (stage === 'SEED') return 'Cây vừa được gieo. Cho cây một chút nước hôm nay nhé 🌱';
+    if (stage === 'SPROUT') return 'Mầm nhú lên rồi! Cây cần nhiều nắng hơn 🌿';
+    if (stage === 'GROWING') return 'Cây đang lớn dần. Tiếp tục chăm sóc nhé 💪';
+    if (stage === 'BUDDING') {
+      if (daysLeft <= 2) return 'Sắp có nụ rồi! Thêm chút tình yêu thương nào 💚';
+      return 'Cây sắp ra nụ. Hãy chăm chút hơn nhé 🌼';
+    }
+    if (stage === 'BLOOMING') return 'Cây đang nở hoa! Bạn đã làm tốt lắm 🌸';
+    return '';
+  };
 
   return (
     <View style={styles.container}>
-      {/* Stage label row */}
-      <View style={styles.row}>
-        <Text style={styles.stageLabel}>{stageInfo?.label ?? status}</Text>
-        <Text style={styles.points}>
-          {growthPoint.toLocaleString('vi-VN')} / {maxGrowthPoint.toLocaleString('vi-VN')} điểm
-        </Text>
+      <View style={styles.primarySection}>
+        {/* Stage label + thời gian còn lại */}
+        <View style={styles.row}>
+          <View style={styles.stageBadge}>
+            <Text style={styles.stageLabel}>{stageInfo?.label ?? stage}</Text>
+          </View>
+          {daysTotal > 0 && nextLabel && (
+            <Text style={styles.daysText}>
+              {daysLeft > 0 ? `Còn ${daysLeft} ngày đến ${nextLabel}` : 'Sắp lên giai đoạn mới ✨'}
+            </Text>
+          )}
+        </View>
+
+        {/* Progress bar */}
+        <View style={styles.trackBg}>
+          <View style={[styles.trackFill, { width: `${Math.max(pct, 2)}%` as any }]} />
+        </View>
+        
+        {/* Phần trăm */}
+        <Text style={styles.pctLabel}>Progress {Math.round(pct)}%</Text>
       </View>
 
-      {/* Progress bar */}
-      <View style={styles.trackBg}>
-        <View
-          style={[
-            styles.trackFill,
-            { width: `${percentage}%` as any, backgroundColor: stageColor },
-          ]}
-        />
-      </View>
+      <View style={styles.divider} />
 
-      {/* Next stage hint */}
-      {nextLabel && pointsToNext > 0 && (
-        <Text style={styles.nextHint}>
-          Còn {pointsToNext} điểm để đạt giai đoạn "{nextLabel}" 🌟
-        </Text>
-      )}
-      {!nextLabel && (
-        <Text style={styles.nextHint}>Cây đã phát triển tối đa! 🎉</Text>
-      )}
+      <View style={styles.secondarySection}>
+        {/* Điểm tích lũy */}
+        {growthPoint !== undefined && (
+          <Text style={styles.growthPts}>🌿 {growthPoint} điểm tích lũy</Text>
+        )}
+        {/* Thông điệp */}
+        <Text style={styles.message}>{getMessage()}</Text>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 8,
-  },
+  container: { gap: 8, width: '100%' },
+
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  stageBadge: {
+    backgroundColor: '#E8F5EE',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
   stageLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text.secondary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#143D25',
   },
-  points: {
+  daysText: {
     fontSize: 12,
-    color: COLORS.text.muted,
+    color: '#6F8F78',
+    fontWeight: '500',
   },
+
+  // ── Progress bar ────────────────────────────────────────────────────────────
   trackBg: {
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.green.light,
+    backgroundColor: '#E8F3E8',
     overflow: 'hidden',
   },
   trackFill: {
     height: '100%',
     borderRadius: 5,
-    minWidth: 8,
+    backgroundColor: '#7BBF8A',
   },
-  nextHint: {
+
+  // ── Text bên dưới bar ───────────────────────────────────────────────────────
+  pctLabel: {
     fontSize: 12,
-    color: COLORS.text.muted,
+    fontWeight: '700',
+    color: '#143D25',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E8F3E8',
+    marginVertical: 4,
+  },
+  primarySection: {
+    gap: 8,
+  },
+  secondarySection: {
+    gap: 4,
+    paddingTop: 4,
+  },
+  growthPts: {
+    fontSize: 12,
+    color: '#6F8F78',
     textAlign: 'center',
+  },
+  message: {
+    fontSize: 13,
+    color: '#6F8F78',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

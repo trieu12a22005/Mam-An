@@ -3,13 +3,19 @@ import { tokenStorage } from '../storage/tokenStorage';
 import { Platform } from 'react-native';
 
 // ── Base URL ─────────────────────────────────────────────────────────────────
-// Bắt buộc dùng IP của máy tính trong cùng WiFi với điện thoại
-// Chạy `ipconfig` để lấy IPv4 Address rồi điền vào đây
-const DEV_BASE_URL = 'http://192.168.1.199:3000/api/v1'; // ← đổi IP nếu cần
+// ✅ KHUYẾN NGHỊ: Deploy backend lên Railway/Render để có URL cố định
+// Không cần đổi IP mỗi khi chuyển WiFi
+
+// URL cloud cố định (sau khi deploy) — dùng cho cả dev lẫn prod
+const CLOUD_URL = 'https://garden-be.vercel.app/api/v1';
+
+// URL local (chỉ dùng khi debug trên máy, phải cùng WiFi)
+const LOCAL_URL = 'http://192.168.1.199:3000/api/v1';
 
 const getBaseURL = () => {
-  if (__DEV__) return DEV_BASE_URL;
-  return 'https://your-production-api.com/api/v1';
+  if (CLOUD_URL) return CLOUD_URL;      // ← ưu tiên cloud nếu đã có
+  if (__DEV__) return LOCAL_URL;        // ← fallback local khi dev
+  return 'https://garden-be.vercel.app/api/v1';
 };
 
 const axiosClient = axios.create({
@@ -71,10 +77,19 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // POST /auth/refresh — dùng cookie refreshToken (withCredentials)
-        const res = await axiosClient.post<{ accessToken: string }>('/auth/refresh');
-        const newToken = res.data.accessToken;
+        // Lấy refreshToken từ SecureStore để gửi trong body
+        // (React Native không tự gửi cookie như browser)
+        const storedRefreshToken = await tokenStorage.getRefreshToken();
+        if (!storedRefreshToken) throw new Error('No refresh token stored');
+
+        const res = await axiosClient.post<{ accessToken: string; refreshToken?: string }>(
+          '/auth/refresh',
+          { refreshToken: storedRefreshToken },
+        );
+        const { accessToken: newToken, refreshToken: newRefreshToken } = res.data;
         await tokenStorage.setAccessToken(newToken);
+        // Nếu backend cấp refreshToken mới (rotation), lưu lại
+        if (newRefreshToken) await tokenStorage.setRefreshToken(newRefreshToken);
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return axiosClient(originalRequest);

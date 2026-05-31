@@ -5,15 +5,29 @@ export type PlantResourceType = "WATER" | "SUNLIGHT" | "FERTILIZER" | "AIR" | "L
 export interface VirtualPlant {
   id: string;
   nickname?: string;
-  status: PlantStatus;
-  growthPoint: number;
-  maxGrowthPoint: number;
+  status: PlantStatus;       // Trạng thái backend (do farmer cập nhật)
+  growthPoint: number;       // Tích lũy cho thành tích / streak
   streakCount: number;
+  createdAt: string;         // Dùng để tính giai đoạn ảo theo thời gian
+  lastCaredAt?: string;      // Lần chăm sóc gần nhất
+
+  // ── Tài nguyên tích lũy (không reset theo ngày) ──────────────────────────
+  waterAmount: number;
+  sunlightAmount: number;
+  fertilizerAmount: number;
+  airAmount: number;
+  loveAmount: number;
+  dewAmount: number;
+
+  // Computed by service — for backward compat with ResourceGrid
   resources: Record<PlantResourceType, number>;
+
   flowerType: {
     id: string;
     name: string;
     imageUrl?: string;
+    stageImages?: Partial<Record<PlantStatus, string>>;   // Ảnh riêng theo giai đoạn
+    stageDurations?: Partial<Record<PlantStatus, number>>; // Số ngày mỗi giai đoạn
   };
   realPlant?: {
     id: string;

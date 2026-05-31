@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { journalService } from '../services/journal.service';
-import { MoodLevel, MoodJournal } from '../types/journal.type';
+import { MoodType, MoodJournal } from '../types/journal.type';
 
 export const useJournal = () => {
   const qc = useQueryClient();
@@ -13,7 +13,7 @@ export const useJournal = () => {
   });
 
   const { mutateAsync: createJournal, isPending: isCreating } = useMutation({
-    mutationFn: ({ mood, note }: { mood: MoodLevel; note: string }) =>
+    mutationFn: ({ mood, note }: { mood: MoodType; note: string }) =>
       journalService.createJournal(mood, note),
     onSuccess: (newJournal) => {
       // Prepend to cache instantly

@@ -1,9 +1,10 @@
 import { AppText as Text } from '../common/AppText';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native';
 import { CareTask } from '../../types/task.type';
 import { RESOURCES } from '../../constants/resources';
 import { COLORS } from '../../constants/colors';
+import { RewardModal } from './RewardModal';
 
 // ── Resource emoji map ───────────────────────────────────────────────────────
 const RESOURCE_EMOJI: Record<string, string> = {
@@ -81,6 +82,7 @@ interface TaskCardProps {
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onComplete }) => {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerFinished, setTimerFinished] = useState(false);
+  const [showReward, setShowReward] = useState(false);
   const resource = RESOURCES[task.rewardResource];
   const emoji = RESOURCE_EMOJI[task.rewardResource];
 
@@ -90,8 +92,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onComplete }) => {
 
   const handleComplete = () => {
     if (!task.completedToday) {
-      onComplete(task.id);
+      setShowReward(true);
     }
+  };
+
+  const handleCloseReward = () => {
+    setShowReward(false);
+    onComplete(task.id);
   };
 
   // ── Completed state ──
@@ -99,13 +106,26 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onComplete }) => {
     return (
       <View style={[styles.card, styles.cardDone]}>
         <View style={styles.doneRow}>
-          <Text style={styles.doneIcon}>✅</Text>
+          <Image
+            source={task.characterImageUrl ? { uri: task.characterImageUrl } : require('../../../assets/happy.png')}
+            style={[styles.taskAvatar, { opacity: 0.6 }]}
+          />
           <View style={styles.flex}>
             <Text style={styles.titleDone}>{task.title}</Text>
             <Text style={styles.doneLabel}>Đã hoàn thành hôm nay</Text>
           </View>
           <View style={[styles.reward, { backgroundColor: resource.color + '22' }]}>
-            <Text style={styles.rewardEmoji}>{emoji}</Text>
+            {task.rewardResource === 'FERTILIZER' ? (
+              <Image source={require('../../../assets/phan_bon.png')} style={{ width: 18, height: 18, borderRadius: 9 }} />
+            ) : task.rewardResource === 'DEW' ? (
+              <Image source={require('../../../assets/suong_mai.png')} style={{ width: 18, height: 18, borderRadius: 9 }} />
+            ) : task.rewardResource === 'SUNLIGHT' ? (
+              <Image source={require('../../../assets/mat_troi.png')} style={{ width: 18, height: 18, borderRadius: 9 }} />
+            ) : task.rewardResource === 'LOVE' ? (
+              <Image source={require('../../../assets/yeu_thuong.png')} style={{ width: 18, height: 18, borderRadius: 9 }} />
+            ) : (
+              <Text style={styles.rewardEmoji}>{emoji}</Text>
+            )}
             <Text style={[styles.rewardAmt, { color: resource.color }]}>
               +{task.rewardAmount}
             </Text>
@@ -117,71 +137,97 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onComplete }) => {
 
   // ── Active card ──
   return (
-    <View style={styles.card}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.flex}>
-          <Text style={styles.title}>{task.title}</Text>
-          {task.description && (
-            <Text style={styles.description}>{task.description}</Text>
-          )}
+    <>
+      <RewardModal
+        visible={showReward}
+        resourceType={task.rewardResource}
+        resourceAmount={task.rewardAmount}
+        taskTitle={task.title}
+        onClose={handleCloseReward}
+      />
+      <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Image
+            source={task.characterImageUrl ? { uri: task.characterImageUrl } : require('../../../assets/character.jpg')}
+            style={styles.taskAvatar}
+          />
+          <View style={styles.flex}>
+            <Text style={styles.title}>{task.title}</Text>
+            {task.description && (
+              <Text style={styles.description}>{task.description}</Text>
+            )}
+          </View>
+          {/* Reward pill */}
+          <View style={[styles.rewardPill, { backgroundColor: resource.color + '22' }]}>
+            {task.rewardResource === 'FERTILIZER' ? (
+              <Image source={require('../../../assets/phan_bon.png')} style={{ width: 14, height: 14, borderRadius: 7 }} />
+            ) : task.rewardResource === 'DEW' ? (
+              <Image source={require('../../../assets/suong_mai.png')} style={{ width: 14, height: 14, borderRadius: 7 }} />
+            ) : task.rewardResource === 'SUNLIGHT' ? (
+              <Image source={require('../../../assets/mat_troi.png')} style={{ width: 14, height: 14, borderRadius: 7 }} />
+            ) : task.rewardResource === 'LOVE' ? (
+              <Image source={require('../../../assets/yeu_thuong.png')} style={{ width: 14, height: 14, borderRadius: 7 }} />
+            ) : (
+              <Text>{emoji}</Text>
+            )}
+            <Text style={[styles.rewardPillText, { color: resource.color }]}>
+              +{task.rewardAmount} {resource.label}
+            </Text>
+          </View>
         </View>
-        {/* Reward pill */}
-        <View style={[styles.rewardPill, { backgroundColor: resource.color + '22' }]}>
-          <Text>{emoji}</Text>
-          <Text style={[styles.rewardPillText, { color: resource.color }]}>
-            +{task.rewardAmount} {resource.label}
-          </Text>
+
+        {/* Growth reward */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Image source={require('../../../assets/image1.png')} style={{ width: 16, height: 16, borderRadius: 8 }} />
+          <Text style={styles.growthHint}>+{task.growthReward} điểm phát triển</Text>
         </View>
-      </View>
 
-      {/* Growth reward */}
-      <Text style={styles.growthHint}>🌱 +{task.growthReward} điểm phát triển</Text>
-
-      {/* Actions by verifyType */}
-      <View style={styles.actionArea}>
-        {task.verifyType === 'SELF_CONFIRM' && (
-          <TouchableOpacity style={styles.btn} onPress={handleComplete}>
-            <Text style={styles.btnText}>Tôi đã hoàn thành ✓</Text>
-          </TouchableOpacity>
-        )}
-
-        {task.verifyType === 'TIMER' && (
-          <>
-            {!timerRunning && !timerFinished && (
-              <TouchableOpacity
-                style={[styles.btn, styles.btnSecondary]}
-                onPress={() => setTimerRunning(true)}
-              >
-                <Text style={[styles.btnText, styles.btnSecondaryText]}>
-                  ▶ Bắt đầu ({Math.floor((task.durationSeconds ?? 0) / 60)}p)
-                </Text>
-              </TouchableOpacity>
-            )}
-            {timerRunning && !timerFinished && (
-              <CountdownTimer
-                seconds={task.durationSeconds ?? 60}
-                onFinish={handleTimerFinish}
-              />
-            )}
-            {timerFinished && (
-              <TouchableOpacity style={styles.btn} onPress={handleComplete}>
-                <Text style={styles.btnText}>Nhận thưởng 🎉</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        {task.verifyType === 'OPTIONAL_PHOTO' && (
-          <View style={styles.photoGroup}>
+        {/* Actions by verifyType */}
+        <View style={styles.actionArea}>
+          {task.verifyType === 'SELF_CONFIRM' && (
             <TouchableOpacity style={styles.btn} onPress={handleComplete}>
               <Text style={styles.btnText}>Tôi đã hoàn thành ✓</Text>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>📷 Ảnh là tùy chọn, không bắt buộc</Text>
-          </View>
-        )}
+          )}
+
+          {task.verifyType === 'TIMER' && (
+            <>
+              {!timerRunning && !timerFinished && (
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnSecondary]}
+                  onPress={() => setTimerRunning(true)}
+                >
+                  <Text style={[styles.btnText, styles.btnSecondaryText]}>
+                    ▶ Bắt đầu ({Math.floor((task.durationSeconds ?? 0) / 60)}p)
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {timerRunning && !timerFinished && (
+                <CountdownTimer
+                  seconds={task.durationSeconds ?? 60}
+                  onFinish={handleTimerFinish}
+                />
+              )}
+              {timerFinished && (
+                <TouchableOpacity style={styles.btn} onPress={handleComplete}>
+                  <Text style={styles.btnText}>Nhận thưởng 🎉</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {task.verifyType === 'OPTIONAL_PHOTO' && (
+            <View style={styles.photoGroup}>
+              <TouchableOpacity style={styles.btn} onPress={handleComplete}>
+                <Text style={styles.btnText}>Tôi đã hoàn thành ✓</Text>
+              </TouchableOpacity>
+              <Text style={styles.photoHint}>📷 Ảnh là tùy chọn, không bắt buộc</Text>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </>
   );
 };
 
@@ -205,6 +251,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   doneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   doneIcon: { fontSize: 24 },
+  taskAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surfaceHighlight },
   titleDone: {
     fontSize: 15, fontWeight: '600', color: COLORS.text.secondary,
     textDecorationLine: 'line-through',

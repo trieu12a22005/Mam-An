@@ -1,42 +1,65 @@
 import { AppText as Text } from '../common/AppText';
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { MoodLevel } from '../../types/journal.type';
+import {
+  View,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from 'react-native';
+import { MoodType } from '../../types/journal.type';
+import { MOOD_OPTIONS } from '../../constants/moods';
 import { COLORS } from '../../constants/colors';
 
-const MOODS: { level: MoodLevel; emoji: string; label: string; color: string }[] = [
-  { level: 'VERY_BAD', emoji: '😣', label: 'Rất tệ',   color: '#FF6B6B' },
-  { level: 'BAD',      emoji: '😔', label: 'Không vui', color: '#FFB347' },
-  { level: 'NORMAL',   emoji: '😐', label: 'Bình thường',color: '#9DB0A0' },
-  { level: 'GOOD',     emoji: '🙂', label: 'Tốt',      color: '#34C759' },
-  { level: 'VERY_GOOD',emoji: '😄', label: 'Rất tốt',  color: '#00C896' },
-];
-
 interface MoodSelectorProps {
-  selected: MoodLevel | null;
-  onChange: (mood: MoodLevel) => void;
+  selectedMood?: MoodType;
+  onSelect: (mood: MoodType) => void;
 }
 
-export const MoodSelector: React.FC<MoodSelectorProps> = ({ selected, onChange }) => {
+export const MoodSelector: React.FC<MoodSelectorProps> = ({
+  selectedMood,
+  onSelect,
+}) => {
   return (
-    <View style={styles.container}>
-      {MOODS.map(({ level, emoji, label, color }) => {
-        const isSelected = selected === level;
+    <View style={styles.grid}>
+      {MOOD_OPTIONS.map((option) => {
+        const isSelected = selectedMood === option.value;
         return (
           <TouchableOpacity
-            key={level}
+            key={option.value}
             style={[
-              styles.item,
-              isSelected && { backgroundColor: color + '22', borderColor: color },
+              styles.card,
+              isSelected && {
+                borderColor: option.color,
+                backgroundColor: option.color + '18',
+                shadowColor: option.color,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 6,
+                elevation: 4,
+                transform: [{ scale: 1.04 }],
+              },
             ]}
-            onPress={() => onChange(level)}
-            activeOpacity={0.75}
+            onPress={() => onSelect(option.value)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.emoji, isSelected && styles.emojiSelected]}>
-              {emoji}
-            </Text>
-            <Text style={[styles.label, isSelected && { color, fontWeight: '700' }]}>
-              {label}
+            <Image
+              source={option.icon}
+              style={[
+                styles.icon,
+                !isSelected && styles.iconUnselected,
+              ]}
+              resizeMode="contain"
+            />
+            <Text
+              style={[
+                styles.label,
+                isSelected && {
+                  color: option.color,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              {option.label}
             </Text>
           </TouchableOpacity>
         );
@@ -46,25 +69,32 @@ export const MoodSelector: React.FC<MoodSelectorProps> = ({ selected, onChange }
 };
 
 const styles = StyleSheet.create({
-  container: {
+  grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 10,
   },
-  item: {
-    flex: 1,
+  card: {
+    width: '31%',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
-    gap: 6,
+    gap: 8,
   },
-  emoji: { fontSize: 28, opacity: 0.7 },
-  emojiSelected: { opacity: 1 },
+  icon: {
+    width: 52,
+    height: 52,
+  },
+  iconUnselected: {
+    opacity: 0.65,
+  },
   label: {
-    fontSize: 10,
+    fontSize: 12,
     color: COLORS.text.muted,
     textAlign: 'center',
     fontWeight: '500',

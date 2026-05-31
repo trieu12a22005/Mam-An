@@ -1,6 +1,6 @@
 import { AppText as Text } from '../src/components/common/AppText';
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Screen } from '../src/components/common/Screen';
 import { AppInput } from '../src/components/common/AppInput';
@@ -35,7 +35,8 @@ export default function Login() {
       await login(email.trim(), password);
       router.replace('/(tabs)/home');
     } catch (err: any) {
-      setErrors({ general: err.message ?? 'Đăng nhập thất bại, vui lòng thử lại.' });
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Đăng nhập thất bại, vui lòng thử lại.';
+      setErrors({ general: msg });
     } finally {
       setLoading(false);
     }
@@ -45,9 +46,9 @@ export default function Login() {
     <Screen scroll padded backgroundColor={COLORS.background}>
       {/* ── Logo area ── */}
       <View style={styles.header}>
-        <Text style={styles.logo}>🌱</Text>
-        <Text style={styles.appName}>Garden Mobile</Text>
-        <Text style={styles.subtitle}>Chăm một bông hoa nhỏ,{'\n'}chăm lại chính mình.</Text>
+        <Image source={require('../assets/image1.png')} style={{ width: 80, height: 80, borderRadius: 40, marginBottom: 12 }} />
+        <Text style={styles.appName}>Mầm An</Text>
+        <Text style={styles.subtitle}>Chăm một mầm nhỏ,{'\n'}chăm lại chính mình.</Text>
       </View>
 
       {/* ── Form ── */}
