@@ -2,11 +2,11 @@ import React, { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
-import { requestNotificationPermission } from '../src/services/pushNotification.service';
+import { requestNotificationPermission, addNotificationReceivedListener, addNotificationResponseListener } from '../src/services/pushNotification.service';
 import * as Updates from 'expo-updates';
 
 const queryClient = new QueryClient({
@@ -40,8 +40,38 @@ export default function RootLayout() {
 
   // ── Xin quyền thông báo ngay khi app khởi động ───────────────────────────
   useEffect(() => {
-    requestNotificationPermission().catch(() => {});
+    requestNotificationPermission().catch(() => { });
   }, []);
+
+  // ── Lắng nghe thông báo khi app đang mở (Foreground) để Cập nhật theo thời gian thực ──
+  // ĐÃ COMMENT LẠI VÌ CHUYỂN SANG DÙNG POLLING (refetchInterval) Ở HOOKS
+  /*
+  useEffect(() => {
+    // 1. Khi app ĐANG MỞ và nhận được thông báo
+    const sub1 = addNotificationReceivedListener((notification) => {
+      console.log('[Push] Nhận thông báo foreground, tự động tải lại dữ liệu...');
+      import('react-native').then(({ Alert }) => Alert.alert('🔔 Đã nhận được thông báo', 'App đang tự động lấy dữ liệu mới...'));
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['virtualPlant'] });
+        queryClient.invalidateQueries({ queryKey: ['plantUpdates'] });
+      }, 1000);
+    });
+
+    // 2. Khi user BẤM VÀO thông báo từ ngoài màn hình khóa / thanh thông báo
+    const sub2 = addNotificationResponseListener((response) => {
+      console.log('[Push] User bấm vào thông báo, tự động tải lại dữ liệu...');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['virtualPlant'] });
+      queryClient.invalidateQueries({ queryKey: ['plantUpdates'] });
+    });
+
+    return () => {
+      sub1.remove();
+      sub2.remove();
+    };
+  }, []);
+  */
 
   // ── Log version và kiểm tra OTA update tự động ────────────────────────
   useEffect(() => {
@@ -55,10 +85,10 @@ export default function RootLayout() {
       try {
         // Không check update khi đang chạy dev (expo start)
         if (__DEV__) return;
-        
+
         console.log('[App] Checking for OTA updates...');
         const update = await Updates.checkForUpdateAsync();
-        
+
         if (update.isAvailable) {
           console.log('[App] Update available! Downloading...');
           await Updates.fetchUpdateAsync();
@@ -72,13 +102,16 @@ export default function RootLayout() {
         console.warn('[App] Error checking for updates:', e);
       }
     }
-    
+
     checkForUpdates();
   }, []);
 
   // Tạm dừng/tiếp tục khi app ra ngoài / quay lại
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
+      // Báo cho React Query biết app vừa được mở lại để tự động fetch data mới nhất
+      focusManager.setFocused(nextAppState === 'active');
+      
       if (nextAppState === 'active') {
         player.play();
       } else {

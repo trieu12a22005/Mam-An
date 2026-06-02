@@ -10,6 +10,7 @@ export const useNotifications = () => {
     queryKey: ['notifications'],
     queryFn: notificationService.getNotifications,
     staleTime: 60_000,
+    refetchInterval: 10000, // Tự động kiểm tra thông báo mới mỗi 10 giây (Polling realtime)
   });
 
   const unreadCount = useMemo(

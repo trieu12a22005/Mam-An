@@ -166,6 +166,7 @@ export const useVirtualPlant = () => {
     queryKey: ['virtualPlant'],
     queryFn: plantService.getVirtualPlant,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 10000, // Tự động lấy dữ liệu mới mỗi 10 giây (Polling realtime)
     retry: (failCount, err: Error) => {
       if (err.message === 'NO_PLANT') return false;
       return failCount < 2;
@@ -330,5 +331,6 @@ export const usePlantUpdates = () => {
     queryFn: () => plantService.getPlantUpdates(plant!.id),
     enabled: !!plant?.id,
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 10000, // Tự động kiểm tra ảnh mới mỗi 10 giây (Polling realtime)
   });
 };

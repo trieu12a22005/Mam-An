@@ -30,15 +30,18 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const { status: existing } = await Notifications.getPermissionsAsync();
   console.log('[Push] Current permission status:', existing);
 
-  if (existing === 'granted') return true;
+  if (existing === 'granted') {
+    syncPushTokenToServer().catch(() => { });
+    return true;
+  }
 
   // Hiện dialog xin quyền của OS
   const { status } = await Notifications.requestPermissionsAsync();
   console.log('[Push] Permission after request:', status);
-  
-  // Nếu user vừa bấm Cho Phép, lập tức đồng bộ token (fix lỗi race condition)
+
+  // Nếu user vừa bấm Cho Phép, lập tức đồng bộ token
   if (status === 'granted') {
-    syncPushTokenToServer().catch(() => {});
+    syncPushTokenToServer().catch(() => { });
   }
 
   return status === 'granted';
@@ -74,21 +77,21 @@ export async function syncPushTokenToServer(): Promise<void> {
     console.log('[Push] Token saved to server. Response:', res.status);
     // HIỂN THỊ ALERT CHO DEBUUG (Có thể xóa sau khi test thành công)
     import('react-native').then(({ Alert }) => {
-       Alert.alert("✅ Push Token Success", "Đã lưu token lên server thành công!\nToken: " + token.slice(0, 20) + "...");
+      Alert.alert("✅ Push Token Success", "Đã lưu token lên server thành công!\nToken: " + token.slice(0, 20) + "...");
     });
   } catch (err: any) {
     // Log đầy đủ để dễ debug
     console.error('[Push] syncPushTokenToServer FAILED:');
     console.error('[Push] Error name:', err?.name);
     console.error('[Push] Error message:', err?.message);
-    
+
     // HIỂN THỊ ALERT CHO DEBUUG
     import('react-native').then(({ Alert }) => {
-       Alert.alert("❌ Push Token Error", 
-         "Name: " + err?.name + "\n" +
-         "Msg: " + err?.message + "\n" +
-         "Status: " + err?.response?.status
-       );
+      Alert.alert("❌ Push Token Error",
+        "Name: " + err?.name + "\n" +
+        "Msg: " + err?.message + "\n" +
+        "Status: " + err?.response?.status
+      );
     });
   }
 }

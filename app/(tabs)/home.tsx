@@ -17,6 +17,7 @@ import { useTasks } from '../../src/hooks/useTasks';
 import { COLORS } from '../../src/constants/colors';
 import { PlantResourceType } from '../../src/types/plant.type';
 import { formatRelativeTime } from '../../src/utils/date';
+import { useNotifications } from '../../src/hooks/useNotifications';
 
 // ── Section header ───────────────────────────────────────────────────────────
 const SectionHeader: React.FC<{
@@ -44,6 +45,7 @@ export default function Home() {
   } = useVirtualPlant();
   const { data: updates = [] } = usePlantUpdates();
   const { pendingTasks, completedTasks, completeTask, isLoading: tasksLoading } = useTasks();
+  const { unreadCount } = useNotifications();
 
   const careEffectRef = useRef<CareEffectHandle>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -139,6 +141,11 @@ export default function Home() {
             onPress={() => router.push('/notifications')}
           >
             <Text style={styles.bell}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -388,8 +395,28 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#F2F7EF',
     justifyContent: 'center', alignItems: 'center',
+    position: 'relative',
   },
   bell: { fontSize: 17 },
+  bellBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 4,
+    backgroundColor: '#EF4444',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#F2F7EF',
+  },
+  bellBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
 
   noPlantContainer: {
     flex: 1,
