@@ -11,6 +11,8 @@ import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useVirtualPlant } from '../../src/hooks/usePlant';
+import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
+import { AppThemeMode } from '../../src/types/theme.type';
 import { COLORS } from '../../src/constants/colors';
 import { PLANT_STAGES } from '../../src/constants/plantStages';
 import { testLocalNotification } from '../../src/services/pushNotification.service';
@@ -25,7 +27,10 @@ const FAREWELL_MESSAGES = [
 
 // ── Helper components ────────────────────────────────────────────────────────
 
-const Divider = () => <View style={styles.divider} />;
+const Divider = () => {
+  const { colors } = useTimeTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
+};
 
 const SettingRow: React.FC<{
   label: string;
@@ -33,22 +38,25 @@ const SettingRow: React.FC<{
   right?: React.ReactNode;
   onPress?: () => void;
   danger?: boolean;
-}> = ({ label, icon, right, onPress, danger }) => (
-  <TouchableOpacity
-    style={styles.settingRow}
-    onPress={onPress}
-    activeOpacity={onPress ? 0.65 : 1}
-    disabled={!onPress}
-  >
-    <View style={[styles.settingIconWrap, danger && styles.settingIconDanger]}>
-      <Text style={styles.settingIcon}>{icon}</Text>
-    </View>
-    <Text style={[styles.settingLabel, danger && styles.settingLabelDanger]}>{label}</Text>
-    <View style={styles.settingRight}>
-      {right ?? <Text style={styles.settingArrow}>›</Text>}
-    </View>
-  </TouchableOpacity>
-);
+}> = ({ label, icon, right, onPress, danger }) => {
+  const { colors } = useTimeTheme();
+  return (
+    <TouchableOpacity
+      style={styles.settingRow}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.65 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.settingIconWrap, { backgroundColor: colors.background }, danger && styles.settingIconDanger]}>
+        <Text style={styles.settingIcon}>{icon}</Text>
+      </View>
+      <Text style={[styles.settingLabel, { color: colors.text }, danger && { color: '#EF4444' }]}>{label}</Text>
+      <View style={styles.settingRight}>
+        {right ?? <Text style={[styles.settingArrow, { color: colors.textMuted }]}>›</Text>}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const StatBadge: React.FC<{ value: string | number; label: string; color: string }> = ({
   value, label, color,
@@ -65,11 +73,12 @@ const LogoutModal: React.FC<{
   onCancel: () => void;
   onConfirm: () => void;
 }> = ({ visible, onCancel, onConfirm }) => {
+  const { colors } = useTimeTheme();
   const msg = FAREWELL_MESSAGES[Math.floor(Math.random() * FAREWELL_MESSAGES.length)];
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onCancel}>
       <Pressable style={styles.modalBackdrop} onPress={onCancel}>
-        <Pressable style={styles.modalCard} onPress={() => {}}>
+        <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
           {/* Mascot */}
           <View style={styles.mascotWrap}>
             <Image
@@ -80,22 +89,22 @@ const LogoutModal: React.FC<{
           </View>
 
           {/* Message bubble */}
-          <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>{msg}</Text>
+          <View style={[styles.bubble, { backgroundColor: colors.surfaceSoft, borderColor: colors.border }]}>
+            <Text style={[styles.bubbleText, { color: colors.text }]}>{msg}</Text>
           </View>
 
           {/* Title */}
-          <Text style={styles.modalTitle}>Đăng xuất?</Text>
-          <Text style={styles.modalSub}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Đăng xuất?</Text>
+          <Text style={[styles.modalSub, { color: colors.textMuted }]}>
             Bạn vẫn có thể quay lại bất cứ lúc nào 🌱
           </Text>
 
           {/* Buttons */}
           <View style={styles.modalBtns}>
-            <TouchableOpacity style={styles.btnCancel} onPress={onCancel} activeOpacity={0.8}>
-              <Text style={styles.btnCancelText}>Ở lại chăm cây</Text>
+            <TouchableOpacity style={[styles.btnCancel, { backgroundColor: colors.surfaceSoft }]} onPress={onCancel} activeOpacity={0.8}>
+              <Text style={[styles.btnCancelText, { color: colors.text }]}>Ở lại chăm cây</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnConfirm} onPress={onConfirm} activeOpacity={0.8}>
+            <TouchableOpacity style={[styles.btnConfirm, { backgroundColor: '#EF4444' }]} onPress={onConfirm} activeOpacity={0.8}>
               <Text style={styles.btnConfirmText}>Tạm biệt 👋</Text>
             </TouchableOpacity>
           </View>
@@ -112,30 +121,44 @@ const ChoiceCard: React.FC<{
   emoji: string;
   title: string;
   subtitle: string;
-}> = ({ selected, onSelect, emoji, title, subtitle }) => (
-  <TouchableOpacity
-    style={[styles.choiceCard, selected && styles.choiceCardSelected]}
-    onPress={onSelect}
-    activeOpacity={0.8}
-  >
-    <Text style={styles.choiceEmoji}>{emoji}</Text>
-    <View style={styles.choiceTexts}>
-      <Text style={[styles.choiceTitle, selected && styles.choiceTitleSelected]}>{title}</Text>
-      <Text style={styles.choiceSub}>{subtitle}</Text>
-    </View>
-    <View style={[styles.radio, selected && styles.radioSelected]}>
-      {selected && <View style={styles.radioDot} />}
-    </View>
-  </TouchableOpacity>
-);
+}> = ({ selected, onSelect, emoji, title, subtitle }) => {
+  const { colors } = useTimeTheme();
+  return (
+    <TouchableOpacity
+      style={[
+        styles.choiceCard,
+        { backgroundColor: colors.background, borderColor: colors.border },
+        selected && { backgroundColor: colors.primarySoft, borderColor: colors.primary }
+      ]}
+      onPress={onSelect}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.choiceEmoji}>{emoji}</Text>
+      <View style={styles.choiceTexts}>
+        <Text style={[styles.choiceTitle, { color: colors.text }, selected && { color: colors.primary }]}>{title}</Text>
+        <Text style={[styles.choiceSub, { color: colors.textMuted }]}>{subtitle}</Text>
+      </View>
+      <View style={[styles.radio, { borderColor: colors.border }, selected && { borderColor: colors.primary }]}>
+        {selected && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Profile() {
   const { user, logout } = useAuth();
   const { plant, isLoading } = useVirtualPlant();
+  const { settings, toggleTimeTheme, toggleNightEffects, setThemeMode, colors, isNight } = useTimeTheme();
   const [flowerChoice, setFlowerChoice] = useState<'ship' | 'donate' | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const THEME_MODE_OPTIONS: { mode: AppThemeMode; label: string; desc: string }[] = [
+    { mode: 'AUTO', label: 'Theo thời gian', desc: 'Tự đổi màu theo buổi sáng/chiều/tối' },
+    { mode: 'LIGHT', label: 'Luôn sáng', desc: 'Tone xanh lá kem sáng' },
+    { mode: 'DARK', label: 'Luôn tối', desc: 'Khu vườn ban đêm' },
+  ];
 
   const handleLogout = () => setShowLogoutModal(true);
   const confirmLogout = async () => {
@@ -163,13 +186,13 @@ export default function Profile() {
       />
 
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero header ── */}
         <LinearGradient
-          colors={['#2D7A4F', '#34C759', '#86EFAC']}
+          colors={isNight ? ['#0F2B1E', '#143D25', '#1F4632'] : ['#2D7A4F', '#34C759', '#86EFAC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -219,20 +242,20 @@ export default function Profile() {
         <View style={styles.body}>
           {/* ── Plant card ── */}
           {plant && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>🌱 Cây đang trồng</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.cardTitle, { color: colors.textMuted }]}>🌱 Cây đang trồng</Text>
               <View style={styles.plantRow}>
                 <PlantAvatar status={plant.status} size="sm" />
                 <View style={styles.plantInfo}>
-                  <Text style={styles.plantName}>
+                  <Text style={[styles.plantName, { color: colors.text }]}>
                     {plant.nickname ?? 'Cây chưa đặt tên'}
                   </Text>
-                  <Text style={styles.plantDetail}>
+                  <Text style={[styles.plantDetail, { color: colors.textMuted }]}>
                     {plant.flowerType.name} · {stageInfo?.label}
                   </Text>
                   {plant.realPlant && (
-                    <View style={styles.codePill}>
-                      <Text style={styles.codeText}>#{plant.realPlant.code}</Text>
+                    <View style={[styles.codePill, { backgroundColor: colors.primarySoft }]}>
+                      <Text style={[styles.codeText, { color: colors.primary }]}>#{plant.realPlant.code}</Text>
                     </View>
                   )}
                 </View>
@@ -241,8 +264,8 @@ export default function Profile() {
           )}
 
           {/* ── Package card ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>🌻 Gói hoa đồng hành</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.textMuted }]}>🌻 Gói hoa đồng hành</Text>
             <View style={styles.packageBanner}>
               <Text style={styles.packageBannerTitle}>Hoa Hướng Dương Đồng Hành</Text>
               <Text style={styles.packageBannerDesc}>
@@ -250,7 +273,7 @@ export default function Profile() {
               </Text>
             </View>
 
-            <Text style={styles.choiceLabel}>Lựa chọn của bạn sau khi hoa nở</Text>
+            <Text style={[styles.choiceLabel, { color: colors.textMuted }]}>Lựa chọn của bạn sau khi hoa nở</Text>
             <ChoiceCard
               selected={flowerChoice === 'ship'}
               onSelect={() => setFlowerChoice('ship')}
@@ -271,9 +294,68 @@ export default function Profile() {
             )}
           </View>
 
+          {/* ── Theme settings card ── */}
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.textMuted }]}>🌑 Giao diện</Text>
+            <Text style={[styles.themeHint, { color: colors.textMuted }]}>
+              Buổi tối, khu vườn sẽ dịu lại và có vài vì sao nhỏ để bạn thư giãn hơn.
+            </Text>
+
+            <SettingRow
+              icon="⏰"
+              label="Tự đổi giao diện theo thời gian"
+              right={
+                <Switch
+                  value={settings.enableTimeTheme}
+                  onValueChange={toggleTimeTheme}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={'#fff'}
+                />
+              }
+            />
+            <Divider />
+            <SettingRow
+              icon="✨"
+              label="Hiệu ứng sao đêm"
+              right={
+                <Switch
+                  value={settings.enableNightEffects}
+                  onValueChange={toggleNightEffects}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={'#fff'}
+                />
+              }
+            />
+            <Divider />
+            <Text style={[styles.themeModeLabel, { color: colors.textMuted }]}>Chế độ giao diện</Text>
+            <View style={styles.themeModeRow}>
+              {THEME_MODE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.mode}
+                  style={[
+                    styles.themeModeBtn,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                    settings.themeMode === opt.mode && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+                  ]}
+                  onPress={() => setThemeMode(opt.mode)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.themeModeBtnText,
+                    { color: colors.textMuted },
+                    settings.themeMode === opt.mode && { color: colors.primary },
+                  ]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.themeModeBtnDesc, { color: colors.textMuted }]}>{opt.desc}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* ── Settings card ── */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>⚙️ Cài đặt</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.textMuted }]}>⚙️ Cài đặt</Text>
             <SettingRow
               icon="🔔"
               label="Thông báo nhắc nhở"
@@ -281,8 +363,8 @@ export default function Profile() {
                 <Switch
                   value={notifEnabled}
                   onValueChange={setNotifEnabled}
-                  trackColor={{ true: COLORS.green.main, false: COLORS.border }}
-                  thumbColor={COLORS.white}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                  thumbColor={'#fff'}
                 />
               }
             />
@@ -299,8 +381,8 @@ export default function Profile() {
           </View>
 
           {/* ── Disclaimer ── */}
-          <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerText}>
+          <View style={[styles.disclaimer, { backgroundColor: colors.surfaceSoft }]}>
+            <Text style={[styles.disclaimerText, { color: colors.textMuted }]}>
               🌿 Garden Mobile hỗ trợ self-care và không thay thế tư vấn chuyên gia sức khỏe tâm thần.
             </Text>
           </View>
@@ -391,6 +473,30 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border,
   },
   cardTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text.muted, letterSpacing: 0.5 },
+
+  // Theme settings
+  themeHint: {
+    fontSize: 12, color: COLORS.text.secondary,
+    lineHeight: 18, fontStyle: 'italic',
+  },
+  themeModeLabel: {
+    fontSize: 13, color: COLORS.text.secondary, fontWeight: '500', marginTop: 4,
+  },
+  themeModeRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  themeModeBtn: {
+    flex: 1, borderRadius: 12, padding: 10,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    alignItems: 'center', gap: 3,
+  },
+  themeModeBtnActive: {
+    borderColor: COLORS.green.main,
+    backgroundColor: COLORS.green[50],
+  },
+  themeModeBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.text.secondary },
+  themeModeBtnTextActive: { color: COLORS.green.dark },
+  themeModeBtnDesc: { fontSize: 10, color: COLORS.text.muted, textAlign: 'center' },
+
 
   // Plant row
   plantRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },

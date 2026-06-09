@@ -2,6 +2,7 @@ import { AppText as Text } from './AppText';
 import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, Image, Animated } from 'react-native';
 import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface LoadingViewProps {
   message?: string;
@@ -11,6 +12,7 @@ export const LoadingView: React.FC<LoadingViewProps> = ({
   message = 'Đang tải...',
 }) => {
   const bounceAnim = useRef(new Animated.Value(0)).current;
+  const { colors } = useTimeTheme();
 
   useEffect(() => {
     Animated.loop(
@@ -22,14 +24,14 @@ export const LoadingView: React.FC<LoadingViewProps> = ({
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Animated.Image
         source={require('../../../assets/thinking.png')}
-        style={[styles.character, { transform: [{ translateY: bounceAnim }] }]}
+        style={[styles.character, { transform: [{ translateY: bounceAnim }], borderColor: colors.primary }]}
         resizeMode="cover"
       />
-      <ActivityIndicator size="large" color={COLORS.green.main} style={styles.spinner} />
-      <Text style={styles.message}>{message}</Text>
+      <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
+      <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>
     </View>
   );
 };

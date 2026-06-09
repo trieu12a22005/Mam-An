@@ -1,18 +1,17 @@
 import { useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { taskService } from '../services/task.service';
-import { CareTask } from '../types/task.type';
+import { taskService, CompleteTaskResponse } from '../services/task.service';
+import { CareTask, SelectedImage } from '../types/task.type';
+import { ShareBonusInfo } from '../components/task/TaskCompleteModal';
 
 export const useTasks = () => {
   const qc = useQueryClient();
-  /** Set các taskId đang trong quá trình xử lý — chặn gọi song song */
   const processingIds = useRef<Set<string>>(new Set());
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: ['tasks', new Date().toDateString()], // key đổi mỗi ngày → tự invalidate
+    queryKey: ['tasks', new Date().toDateString()],
     queryFn: taskService.getTasks,
     staleTime: (() => {
-      // Cache hết hạn đúng lúc 0:00 ngày hôm sau
       const now = new Date();
       const midnight = new Date(now);
       midnight.setHours(24, 0, 0, 0);
@@ -21,37 +20,71 @@ export const useTasks = () => {
   });
 
   /**
-   * Hoàn thành task — optimistic update, rollback nếu API fail.
-   * Trả về task đã complete để caller cập nhật cây ảo.
-   * Chặn chạy song song: nếu task đang được xử lý → bỏ qua ngay.
+   * Hoàn thành task có hỗ trợ ảnh và chia sẻ cộng đồng.
+   * - PHOTO_REQUIRED: bắt buộc có photo, ném lỗi nếu thiếu.
+   * - PHOTO_OPTIONAL: ảnh là tùy chọn.
+   * - SELF_CONFIRM / TIMER: không cần ảnh.
+   * Nếu share có ảnh → backend tự cộng +5 tài nguyên và trả shareBonus.
+   * Trả về { response, shareBonus } hoặc null.
    */
   const completeTask = useCallback(
-    async (taskId: string, virtualPlantId?: string): Promise<CareTask | null> => {
-      const target = tasks.find((t) => t.id === taskId);
-      // Bỏ qua nếu đã hoàn thành hoặc đang trong quá trình xử lý
-      if (!target || target.completedToday) return null;
-      if (processingIds.current.has(taskId)) return null;
+    async (input: {
+      task: CareTask;
+      note?: string;
+      photo?: SelectedImage;
+      shareToCommunity?: boolean;
+      visibility?: 'PUBLIC' | 'ANONYMOUS';
+      virtualPlantId?: string;
+    }): Promise<{ response: CompleteTaskResponse; shareBonus?: ShareBonusInfo } | null> => {
+      const { task, note, photo, shareToCommunity, visibility, virtualPlantId } = input;
 
-      processingIds.current.add(taskId);
+      if (task.completedToday) return null;
+      if (processingIds.current.has(task.id)) return null;
 
-      // Optimistic update
+      // Kiểm tra ảnh bắt buộc
+      if (task.verifyType === 'PHOTO_REQUIRED' && !photo) {
+        throw new Error('Nhiệm vụ này cần một bức ảnh để hoàn thành.');
+      }
+
+      processingIds.current.add(task.id);
+
+      // Optimistic update — đánh dấu đã hoàn thành ngay lập tức
       const queryKey = ['tasks', new Date().toDateString()];
       qc.setQueryData<CareTask[]>(queryKey, (prev = []) =>
-        prev.map((t) => (t.id === taskId ? { ...t, completedToday: true } : t)),
+        prev.map((t) => (t.id === task.id ? { ...t, completedToday: true } : t)),
       );
 
       try {
-        await taskService.completeTask(taskId, virtualPlantId);
-        return { ...target, completedToday: true };
-      } catch {
+        const result = await taskService.completeTaskWithFormData({
+          careTaskId: task.id,
+          virtualPlantId,
+          note,
+          photo,
+          shareToCommunity,
+          visibility,
+        });
+
+        // Làm mới dữ liệu liên quan
+        qc.invalidateQueries({ queryKey: ['virtualPlant'] });
+        qc.invalidateQueries({ queryKey: ['plantUpdates'] });
+        if (result.communityPost) {
+          qc.invalidateQueries({ queryKey: ['communityPosts'] });
+        }
+
+        // Lấy shareBonus trực tiếp từ response backend (backend đã tự cộng tài nguyên)
+        const shareBonus: ShareBonusInfo | undefined = result.shareBonus
+          ? { resourceType: result.shareBonus.resourceType as any, bonusAmount: result.shareBonus.bonusAmount }
+          : undefined;
+
+        return { response: result, shareBonus };
+      } catch (err) {
         // Rollback nếu API fail
         qc.setQueryData<CareTask[]>(queryKey, (prev = []) =>
-          prev.map((t) => (t.id === taskId ? { ...t, completedToday: false } : t)),
+          prev.map((t) => (t.id === task.id ? { ...t, completedToday: false } : t)),
         );
-        return null;
+        throw err;
       } finally {
-        // Luôn giải phóng lock sau khi xong (dù thành công hay thất bại)
-        processingIds.current.delete(taskId);
+        processingIds.current.delete(task.id);
       }
     },
     [tasks, qc],

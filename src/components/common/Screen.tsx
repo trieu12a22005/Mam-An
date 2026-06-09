@@ -9,7 +9,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface ScreenProps {
   children: React.ReactNode;
@@ -32,11 +32,17 @@ export const Screen: React.FC<ScreenProps> = ({
   style,
   scroll = false,
   padded = true,
-  backgroundColor = COLORS.background,
+  backgroundColor,          // undefined = use theme color
   edges = ['top'],          // ← only top by default; tab bar handles bottom
   extraBottomPad = 16,
 }) => {
+  const { colors, isNight } = useTimeTheme();
   const insets = useSafeAreaInsets();
+
+  // Nếu không truyền prop → dùng màu theo theme
+  const bg = backgroundColor ?? colors.background;
+  // StatusBar style: sáng text khi nền tối (ban đêm)
+  const barStyle = isNight ? 'light-content' : 'dark-content';
 
   const inner = (
     <View
@@ -51,8 +57,8 @@ export const Screen: React.FC<ScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor }]} edges={edges}>
-      <StatusBar barStyle="dark-content" backgroundColor={backgroundColor} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={edges}>
+      <StatusBar barStyle={barStyle} backgroundColor={bg} />
       {scroll ? (
         <KeyboardAvoidingView
           style={styles.flex}
@@ -62,7 +68,6 @@ export const Screen: React.FC<ScreenProps> = ({
             style={styles.flex}
             contentContainerStyle={[
               styles.scrollContent,
-              // Add bottom padding = tab bar height + device navigation bar
               { paddingBottom: insets.bottom + extraBottomPad },
             ]}
             keyboardShouldPersistTaps="handled"

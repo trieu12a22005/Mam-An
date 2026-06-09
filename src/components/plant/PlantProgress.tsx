@@ -5,6 +5,7 @@ import { PlantStatus } from '../../types/plant.type';
 import { PLANT_STAGES } from '../../constants/plantStages';
 import { COLORS } from '../../constants/colors';
 import { StageProgress } from '../../hooks/usePlant';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface PlantProgressProps {
   stage: PlantStatus;
@@ -19,6 +20,7 @@ export const PlantProgress: React.FC<PlantProgressProps> = ({
 }) => {
   if (!stageProgress) return null;
 
+  const { colors } = useTimeTheme();
   const stageInfo = PLANT_STAGES[stage];
   const { pct, daysLeft, daysInStage, daysTotal, nextStage } = stageProgress;
 
@@ -43,34 +45,34 @@ export const PlantProgress: React.FC<PlantProgressProps> = ({
       <View style={styles.primarySection}>
         {/* Stage label + thời gian còn lại */}
         <View style={styles.row}>
-          <View style={styles.stageBadge}>
-            <Text style={styles.stageLabel}>{stageInfo?.label ?? stage}</Text>
+          <View style={[styles.stageBadge, { backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.stageLabel, { color: colors.primary }]}>{stageInfo?.label ?? stage}</Text>
           </View>
           {daysTotal > 0 && nextLabel && (
-            <Text style={styles.daysText}>
+            <Text style={[styles.daysText, { color: colors.textMuted }]}>
               {daysLeft > 0 ? `Còn ${daysLeft} ngày đến ${nextLabel}` : 'Sắp lên giai đoạn mới ✨'}
             </Text>
           )}
         </View>
 
         {/* Progress bar */}
-        <View style={styles.trackBg}>
-          <View style={[styles.trackFill, { width: `${Math.max(pct, 2)}%` as any }]} />
+        <View style={[styles.trackBg, { backgroundColor: colors.surfaceSoft }]}>
+          <View style={[styles.trackFill, { width: `${Math.max(pct, 2)}%` as any, backgroundColor: colors.primary }]} />
         </View>
         
         {/* Phần trăm */}
-        <Text style={styles.pctLabel}>Progress {Math.round(pct)}%</Text>
+        <Text style={[styles.pctLabel, { color: colors.text }]}>Progress {Math.round(pct)}%</Text>
       </View>
 
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       <View style={styles.secondarySection}>
         {/* Điểm tích lũy */}
         {growthPoint !== undefined && (
-          <Text style={styles.growthPts}>🌿 {growthPoint} điểm tích lũy</Text>
+          <Text style={[styles.growthPts, { color: colors.textMuted }]}>🌿 {growthPoint} điểm tích lũy</Text>
         )}
         {/* Thông điệp */}
-        <Text style={styles.message}>{getMessage()}</Text>
+        <Text style={[styles.message, { color: colors.textMuted }]}>{getMessage()}</Text>
       </View>
     </View>
   );

@@ -7,8 +7,26 @@ export interface CareTask {
   rewardResource: PlantResourceType;
   rewardAmount: number;
   growthReward: number;
-  verifyType: "SELF_CONFIRM" | "TIMER" | "OPTIONAL_PHOTO";
+  verifyType: "SELF_CONFIRM" | "TIMER" | "PHOTO_REQUIRED" | "PHOTO_OPTIONAL";
   durationSeconds?: number;
   completedToday: boolean;
-  characterImageUrl?: string;   // URL ảnh nhân vật riêng của task (Cloudinary)
+  isShareable?: boolean;
+  characterImageUrl?: string;
 }
+
+export interface CareTaskLog {
+  id: string;
+  careTaskId: string;
+  note?: string;
+  photoUrl?: string;
+  sharedToCommunity: boolean;
+  completedAt: string;
+}
+
+/** Ảnh user đã chọn / chụp */
+export interface SelectedImage {
+  uri: string;
+  name: string;
+  type: string; // "image/jpeg" | "image/png" | "image/webp"
+}
+

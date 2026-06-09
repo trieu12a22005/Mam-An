@@ -5,9 +5,11 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/contexts/AuthContext';
+import { TimeThemeProvider } from '../src/contexts/TimeThemeContext';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
-import { requestNotificationPermission, addNotificationReceivedListener, addNotificationResponseListener } from '../src/services/pushNotification.service';
+import { requestNotificationPermission } from '../src/services/pushNotification.service';
 import * as Updates from 'expo-updates';
+import { backgroundMusicControl } from '../src/utils/backgroundMusicControl';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,18 +27,25 @@ export default function RootLayout() {
   );
 
   useEffect(() => {
+    let isMounted = true;
     async function setupAudio() {
       try {
         await setAudioModeAsync({ playsInSilentMode: true });
-        player.loop = true;
-        player.volume = 0.3;
-        player.play();
+        if (isMounted) {
+          player.loop = true;
+          player.volume = 0.3;
+          // Only play if it's not already playing to avoid redundant calls
+          if (!player.playing) {
+            player.play();
+          }
+        }
       } catch (e) {
         console.warn('Error setting up background music:', e);
       }
     }
     setupAudio();
-  }, [player]);
+    return () => { isMounted = false; };
+  }, []); // Remove player from dependencies to prevent infinite loop
 
   // ── Xin quyền thông báo ngay khi app khởi động ───────────────────────────
   useEffect(() => {
@@ -106,43 +115,54 @@ export default function RootLayout() {
     checkForUpdates();
   }, []);
 
+  // Pause/resume nhạc nền khi Vườn Yên phát calm music
+  useEffect(() => {
+    const unsubPause = backgroundMusicControl.onPause(() => { try { player.pause(); } catch {} });
+    const unsubResume = backgroundMusicControl.onResume(() => { try { player.play(); } catch {} });
+    return () => { unsubPause(); unsubResume(); };
+  }, []); // Empty dependency array to prevent constant re-binding
+
   // Tạm dừng/tiếp tục khi app ra ngoài / quay lại
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      // Báo cho React Query biết app vừa được mở lại để tự động fetch data mới nhất
       focusManager.setFocused(nextAppState === 'active');
-      
       if (nextAppState === 'active') {
-        player.play();
+        if (!player.playing) {
+          player.play();
+        }
       } else {
         player.pause();
       }
     });
     return () => subscription.remove();
-  }, [player]);
+  }, []); // Empty dependency array to prevent constant re-binding
 
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider queryClient={queryClient}>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="register" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="notifications"
-              options={{
-                headerShown: true,
-                title: 'Thông báo',
-                presentation: 'modal',
-                headerStyle: { backgroundColor: '#F7FBF7' },
-                headerTintColor: '#1A2E1A',
-                headerShadowVisible: false,
-              }}
-            />
-          </Stack>
+          <TimeThemeProvider>
+            <StatusBar style="auto" />
+            <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="register" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="calm-space" />
+              <Stack.Screen name="music-select" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen
+                name="notifications"
+                options={{
+                  headerShown: true,
+                  title: 'Thông báo',
+                  presentation: 'modal',
+                  headerStyle: { backgroundColor: '#F7FBF7' },
+                  headerTintColor: '#1A2E1A',
+                  headerShadowVisible: false,
+                }}
+              />
+            </Stack>
+          </TimeThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

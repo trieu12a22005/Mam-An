@@ -2,6 +2,7 @@ import { AppText as Text } from '../common/AppText';
 import React, { useState } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { PlantUpdate, PlantStatus } from '../../types/plant.type';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 import { COLORS } from '../../constants/colors';
 import { formatDate } from '../../utils/date';
 import { PLANT_STAGES } from '../../constants/plantStages';
@@ -15,16 +16,21 @@ const STATUS_EMOJI: Record<PlantStatus, string> = {
 
 // ── Image with fallback ───────────────────────────────────────────────────────
 
-const TimelineImage: React.FC<{ uri: string; fallbackEmoji: string }> = ({
-  uri, fallbackEmoji,
+const TimelineImage: React.FC<{
+  uri: string;
+  fallbackEmoji: string;
+  surfaceSoft: string;
+  textMuted: string;
+}> = ({
+  uri, fallbackEmoji, surfaceSoft, textMuted,
 }) => {
   const [errored, setErrored] = useState(false);
 
   if (errored) {
     return (
-      <View style={styles.imagePlaceholder}>
+      <View style={[styles.imagePlaceholder, { backgroundColor: surfaceSoft }]}>
         <Text style={styles.imageFallbackEmoji}>{fallbackEmoji}</Text>
-        <Text style={styles.imagePlaceholderText}>Ảnh chưa có</Text>
+        <Text style={[styles.imagePlaceholderText, { color: textMuted }]}>Ảnh chưa có</Text>
       </View>
     );
   }
@@ -32,7 +38,7 @@ const TimelineImage: React.FC<{ uri: string; fallbackEmoji: string }> = ({
   return (
     <Image
       source={{ uri }}
-      style={styles.image}
+      style={[styles.image, { backgroundColor: surfaceSoft }]}
       resizeMode="cover"
       onError={() => setErrored(true)}
     />
@@ -54,9 +60,10 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   isFirst = false,
   isLast = false,
 }) => {
+  const { colors } = useTimeTheme();
   const stageInfo = PLANT_STAGES[update.status];
   const stageEmoji = STATUS_EMOJI[update.status];
-  const stageColor = COLORS.stages[update.status] ?? COLORS.green.main;
+  const stageColor = COLORS.stages[update.status] ?? colors.primary;
 
   return (
     <View style={styles.row}>
@@ -65,13 +72,22 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
         <View style={[styles.dot, { backgroundColor: stageColor }]}>
           <Text style={styles.dotEmoji}>{stageEmoji}</Text>
         </View>
-        {!isLast && <View style={styles.line} />}
+        {!isLast && <View style={[styles.line, { backgroundColor: colors.border }]} />}
       </View>
 
       {/* ── Card ── */}
-      <View style={[styles.card, isFirst && styles.cardFirst]}>
+      <View style={[
+        styles.card,
+        { backgroundColor: colors.surface },
+        isFirst && { borderWidth: 1.5, borderColor: colors.primarySoft },
+      ]}>
         {/* Image with error fallback */}
-        <TimelineImage uri={update.imageUrl} fallbackEmoji={stageEmoji} />
+        <TimelineImage
+          uri={update.imageUrl}
+          fallbackEmoji={stageEmoji}
+          surfaceSoft={colors.surfaceSoft}
+          textMuted={colors.textMuted}
+        />
 
         {/* Content */}
         <View style={styles.content}>
@@ -83,18 +99,20 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
           </View>
 
           {/* Date */}
-          <Text style={styles.date}>{formatDate(update.createdAt, 'DD/MM/YYYY')}</Text>
+          <Text style={[styles.date, { color: colors.textMuted }]}>
+            {formatDate(update.createdAt, 'DD/MM/YYYY')}
+          </Text>
 
           {/* Note */}
           {update.note && (
-            <Text style={styles.note}>{update.note}</Text>
+            <Text style={[styles.note, { color: colors.text }]}>{update.note}</Text>
           )}
 
           {/* Health note */}
           {update.healthNote && (
-            <View style={styles.healthBox}>
-              <Text style={styles.healthLabel}>🌿 Ghi chú từ nhà vườn</Text>
-              <Text style={styles.healthNote}>{update.healthNote}</Text>
+            <View style={[styles.healthBox, { backgroundColor: colors.surfaceSoft }]}>
+              <Text style={[styles.healthLabel, { color: colors.primary }]}>🌿 Ghi chú từ nhà vườn</Text>
+              <Text style={[styles.healthNote, { color: colors.text }]}>{update.healthNote}</Text>
             </View>
           )}
         </View>
@@ -128,13 +146,11 @@ const styles = StyleSheet.create({
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: COLORS.border,
     marginTop: 4,
     marginBottom: -8,
   },
   card: {
     flex: 1,
-    backgroundColor: COLORS.surface,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
@@ -144,25 +160,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  cardFirst: {
-    borderWidth: 1.5,
-    borderColor: COLORS.green.light,
-  },
   image: {
     width: '100%',
     height: 180,
-    backgroundColor: COLORS.green[50],
   },
   imagePlaceholder: {
     width: '100%',
     height: 180,
-    backgroundColor: COLORS.green[50],
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
   imageFallbackEmoji: { fontSize: 56, opacity: 0.4 },
-  imagePlaceholderText: { fontSize: 13, color: COLORS.text.muted },
+  imagePlaceholderText: { fontSize: 13 },
   content: {
     padding: 14,
     gap: 8,
@@ -174,18 +184,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  date: { fontSize: 12, color: COLORS.text.muted },
+  date: { fontSize: 12 },
   note: {
     fontSize: 14,
-    color: COLORS.text.secondary,
     lineHeight: 22,
   },
   healthBox: {
-    backgroundColor: COLORS.green[50],
     borderRadius: 10,
     padding: 10,
     gap: 4,
   },
-  healthLabel: { fontSize: 12, color: COLORS.green.dark, fontWeight: '600' },
-  healthNote: { fontSize: 13, color: COLORS.text.secondary, lineHeight: 20 },
+  healthLabel: { fontSize: 12, fontWeight: '600' },
+  healthNote: { fontSize: 13, lineHeight: 20 },
 });

@@ -1,126 +1,172 @@
-import * as Notifications from 'expo-notifications';
+/**
+ * pushNotification.service.ts
+ *
+ * Guard Expo Go: SDK 53 đã xóa remote push notification khỏi Expo Go.
+ * Toàn bộ code expo-notifications được lazy-import và bọc try-catch
+ * để app không crash khi chạy bằng Expo Go.
+ *
+ * Khi dùng Development Build thì hoạt động bình thường.
+ */
+
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import axiosClient from '../api/axiosClient';
 
-// ── Cấu hình hiển thị notification khi app đang mở (foreground) ──────────────
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// ── Detect Expo Go ─────────────────────────────────────────────────────────────
+// Constants.appOwnership === 'expo' khi chạy trong Expo Go
+const isExpoGo =
+  Constants.appOwnership === 'expo' ||
+  Constants.executionEnvironment === 'storeClient';
+
+// ── Lazy import expo-notifications (tránh crash khi Expo Go load module) ───────
+async function getNotifications() {
+  try {
+    return await import('expo-notifications');
+  } catch {
+    return null;
+  }
+}
+
+// ── Setup handler foreground (chỉ chạy trong dev build) ──────────────────────
+if (!isExpoGo) {
+  getNotifications().then((N) => {
+    if (!N) return;
+    N.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }).catch(() => {});
+}
 
 // ── BƯỚC 1: Xin quyền ngay khi app khởi động ────────────────────────────────
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('garden-updates-v2', {
-      name: 'Cập nhật vườn V2 🌿',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2ea82e',
-      sound: 'default',
-      description: 'Thông báo khi nhà vườn cập nhật tình trạng cây của bạn',
-      showBadge: true,
-    });
+  if (isExpoGo) {
+    console.log('[Push] Expo Go detected — skipping push notification setup.');
+    return false;
   }
 
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  console.log('[Push] Current permission status:', existing);
+  try {
+    const N = await getNotifications();
+    if (!N) return false;
 
-  if (existing === 'granted') {
-    syncPushTokenToServer().catch(() => { });
-    return true;
+    if (Platform.OS === 'android') {
+      await N.setNotificationChannelAsync('garden-updates-v2', {
+        name: 'Cập nhật vườn V2 🌿',
+        importance: N.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#2ea82e',
+        sound: 'default',
+        description: 'Thông báo khi nhà vườn cập nhật tình trạng cây của bạn',
+        showBadge: true,
+      });
+    }
+
+    const { status: existing } = await N.getPermissionsAsync();
+    console.log('[Push] Current permission status:', existing);
+
+    if (existing === 'granted') {
+      syncPushTokenToServer().catch(() => {});
+      return true;
+    }
+
+    const { status } = await N.requestPermissionsAsync();
+    console.log('[Push] Permission after request:', status);
+
+    if (status === 'granted') {
+      syncPushTokenToServer().catch(() => {});
+    }
+
+    return status === 'granted';
+  } catch (err: any) {
+    console.warn('[Push] requestNotificationPermission error:', err?.message);
+    return false;
   }
-
-  // Hiện dialog xin quyền của OS
-  const { status } = await Notifications.requestPermissionsAsync();
-  console.log('[Push] Permission after request:', status);
-
-  // Nếu user vừa bấm Cho Phép, lập tức đồng bộ token
-  if (status === 'granted') {
-    syncPushTokenToServer().catch(() => { });
-  }
-
-  return status === 'granted';
 }
 
-// ── BƯỚC 2: Lấy token + gửi lên server (sau khi đã login) ────────────────────
+// ── BƯỚC 2: Lấy token + gửi lên server ───────────────────────────────────────
 export async function syncPushTokenToServer(): Promise<void> {
+  if (isExpoGo) return;
+
   try {
-    // 1. Kiểm tra quyền
-    const { status } = await Notifications.getPermissionsAsync();
-    console.log('[Push] syncPushTokenToServer — permission:', status);
+    const N = await getNotifications();
+    if (!N) return;
+
+    const { status } = await N.getPermissionsAsync();
     if (status !== 'granted') {
-      import('react-native').then(({ Alert }) => Alert.alert("⚠️ Permission Not Granted", "Trạng thái quyền hiện tại: " + status));
+      console.warn('[Push] Permission not granted, skip token sync.');
       return;
     }
 
-    // 2. Lấy projectId
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       'cb8667d2-fd41-4a07-bfc4-f559a525306e';
 
-    // 3. Lấy Expo Push Token
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    const tokenData = await N.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
+    if (!token) return;
 
-    if (!token) {
-      import('react-native').then(({ Alert }) => Alert.alert("⚠️ Lỗi Token", "Không lấy được token từ hệ thống Expo."));
-      return;
-    }
-
-    // 4. Gửi lên backend
-    const res = await axiosClient.patch('/users/push-token', { pushToken: token });
-    console.log('[Push] Token saved to server. Response:', res.status);
-    // HIỂN THỊ ALERT CHO DEBUUG (Có thể xóa sau khi test thành công)
-    import('react-native').then(({ Alert }) => {
-      Alert.alert("✅ Push Token Success", "Đã lưu token lên server thành công!\nToken: " + token.slice(0, 20) + "...");
-    });
+    await axiosClient.patch('/users/push-token', { pushToken: token });
+    console.log('[Push] Token synced to server.');
   } catch (err: any) {
-    // Log đầy đủ để dễ debug
-    console.error('[Push] syncPushTokenToServer FAILED:');
-    console.error('[Push] Error name:', err?.name);
-    console.error('[Push] Error message:', err?.message);
-
-    // HIỂN THỊ ALERT CHO DEBUUG
-    import('react-native').then(({ Alert }) => {
-      Alert.alert("❌ Push Token Error",
-        "Name: " + err?.name + "\n" +
-        "Msg: " + err?.message + "\n" +
-        "Status: " + err?.response?.status
-      );
-    });
+    console.warn('[Push] syncPushTokenToServer failed:', err?.message);
   }
 }
 
-// ── Listener: user tap vào notification ──────────────────────────────────────
+// ── Listeners (no-op khi Expo Go) ─────────────────────────────────────────────
+type AnySubscription = { remove: () => void };
+const NOOP_SUB: AnySubscription = { remove: () => {} };
+
 export function addNotificationResponseListener(
-  handler: (response: Notifications.NotificationResponse) => void,
-): Notifications.EventSubscription {
-  return Notifications.addNotificationResponseReceivedListener(handler);
+  handler: (response: any) => void,
+): AnySubscription {
+  if (isExpoGo) return NOOP_SUB;
+  let sub = NOOP_SUB;
+  getNotifications().then((N) => {
+    if (N) sub = N.addNotificationResponseReceivedListener(handler);
+  }).catch(() => {});
+  return {
+    remove: () => sub.remove(),
+  };
 }
 
-// ── Listener: nhận notification khi app foreground ───────────────────────────
 export function addNotificationReceivedListener(
-  handler: (notification: Notifications.Notification) => void,
-): Notifications.EventSubscription {
-  return Notifications.addNotificationReceivedListener(handler);
+  handler: (notification: any) => void,
+): AnySubscription {
+  if (isExpoGo) return NOOP_SUB;
+  let sub = NOOP_SUB;
+  getNotifications().then((N) => {
+    if (N) sub = N.addNotificationReceivedListener(handler);
+  }).catch(() => {});
+  return {
+    remove: () => sub.remove(),
+  };
 }
 
-// ── Hàm test nội bộ để loại trừ lỗi hệ thống ───────────────────────────────
-export async function testLocalNotification() {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Test local Mầm An 🌱',
-      body: 'Nếu thấy thông báo này thì quyền + channel OK',
-      sound: 'default',
-    },
-    trigger: {
-      seconds: 2,
-      channelId: 'garden-updates-v2',
-    } as any,
-  });
+// ── Test local notification ───────────────────────────────────────────────────
+export async function testLocalNotification(): Promise<void> {
+  if (isExpoGo) {
+    console.log('[Push] Expo Go — local notification test skipped.');
+    return;
+  }
+  try {
+    const N = await getNotifications();
+    if (!N) return;
+    await N.scheduleNotificationAsync({
+      content: {
+        title: 'Test local Mầm An 🌱',
+        body: 'Nếu thấy thông báo này thì quyền + channel OK',
+        sound: 'default',
+      },
+      trigger: {
+        seconds: 2,
+        channelId: 'garden-updates-v2',
+      } as any,
+    });
+  } catch (err: any) {
+    console.warn('[Push] testLocalNotification error:', err?.message);
+  }
 }

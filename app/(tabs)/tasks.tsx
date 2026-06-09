@@ -1,68 +1,59 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React from 'react';
-import { View, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '../../src/components/common/Screen';
 import { TaskCard } from '../../src/components/task/TaskCard';
 import { EmptyState } from '../../src/components/common/EmptyState';
 import { LoadingView } from '../../src/components/common/LoadingView';
+import { ThemedScreen } from '../../src/components/theme/ThemedScreen';
 import { useTasks } from '../../src/hooks/useTasks';
 import { useVirtualPlant } from '../../src/hooks/usePlant';
-import { COLORS } from '../../src/constants/colors';
-import { RESOURCES } from '../../src/constants/resources';
-
-const RESOURCE_EMOJI: Record<string, string> = {
-  WATER: '💧', SUNLIGHT: '☀️', FERTILIZER: '🌿',
-  AIR: '🌬️', LOVE: '💚', DEW: '✨',
-};
+import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
+import { TaskCompleteResult, ShareBonusInfo } from '../../src/components/task/TaskCompleteModal';
 
 export default function Tasks() {
   const { tasks, isLoading, completeTask } = useTasks();
-  const { updatePlantAfterTask } = useVirtualPlant();
+  const { plant, updatePlantAfterTask } = useVirtualPlant();
+  const { colors } = useTimeTheme();
   const insets = useSafeAreaInsets();
 
-  const handleComplete = async (taskId: string) => {
-    const completedTask = await completeTask(taskId);
-    if (!completedTask) return;
-
-    updatePlantAfterTask(completedTask);
-
-    const emoji = RESOURCE_EMOJI[completedTask.rewardResource] ?? '';
-    const resourceLabel = RESOURCES[completedTask.rewardResource]?.label ?? '';
-    Alert.alert(
-      'Cây vui lắm!',
-      `Cây đã nhận thêm ${emoji} ${resourceLabel} từ bạn hôm nay.\n+${completedTask.growthReward} điểm phát triển`,
-      [{ text: 'Tuyệt vời!', style: 'default' }],
-    );
+  const handleComplete = async (result: TaskCompleteResult): Promise<ShareBonusInfo | void> => {
+    const { task, note, photo, shareToCommunity, visibility } = result;
+    const outcome = await completeTask({
+      task, note, photo, shareToCommunity, visibility,
+      virtualPlantId: plant?.id,
+    });
+    updatePlantAfterTask(task);
+    return outcome?.shareBonus;
   };
 
   if (isLoading) return <LoadingView message="Đang tải nhiệm vụ..." />;
 
   const pending = tasks.filter((t) => !t.completedToday);
-  const done = tasks.filter((t) => t.completedToday);
+  const done    = tasks.filter((t) =>  t.completedToday);
 
   return (
-    <Screen padded={false}>
+    <ThemedScreen>
       <FlatList
         data={[...pending, ...done]}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
-        // Sort: pending first, done last
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>Nhiệm vụ hôm nay</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>Nhiệm vụ hôm nay</Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
               Hoàn thành một việc nhỏ để chăm cây và chăm chính mình. 🌿
             </Text>
 
-            {/* Progress summary */}
+            {/* Progress bar */}
             <View style={styles.progressRow}>
-              <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarBg, { backgroundColor: colors.primarySoft }]}>
                 <View
                   style={[
                     styles.progressBarFill,
                     {
+                      backgroundColor: colors.primary,
                       width: tasks.length > 0
                         ? `${(done.length / tasks.length) * 100}%` as any
                         : '0%',
@@ -70,7 +61,7 @@ export default function Tasks() {
                   ]}
                 />
               </View>
-              <Text style={styles.progressLabel}>
+              <Text style={[styles.progressLabel, { color: colors.textMuted }]}>
                 {done.length}/{tasks.length} hoàn thành
               </Text>
             </View>
@@ -89,48 +80,21 @@ export default function Tasks() {
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         extraData={tasks}
       />
-    </Screen>
+    </ThemedScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    padding: 20,
-    gap: 0,
-  },
-  header: {
-    marginBottom: 20,
-    gap: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text.primary,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.text.muted,
-    lineHeight: 22,
-  },
-  progressRow: {
-    marginTop: 4,
-    gap: 6,
-  },
+  list: { padding: 20, gap: 0 },
+  header: { marginBottom: 20, gap: 8 },
+  title: { fontSize: 24, fontWeight: '700' },
+  subtitle: { fontSize: 14, lineHeight: 22 },
+  progressRow: { marginTop: 4, gap: 6 },
   progressBarBg: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.green.light,
-    overflow: 'hidden',
+    height: 8, borderRadius: 4, overflow: 'hidden',
   },
   progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: COLORS.green.main,
-    minWidth: 8,
+    height: '100%', borderRadius: 4, minWidth: 8,
   },
-  progressLabel: {
-    fontSize: 12,
-    color: COLORS.text.muted,
-    textAlign: 'right',
-  },
+  progressLabel: { fontSize: 12, textAlign: 'right' },
 });

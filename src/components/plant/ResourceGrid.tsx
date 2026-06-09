@@ -4,6 +4,7 @@ import { AppText as Text } from '../common/AppText';
 import { PlantResourceType } from '../../types/plant.type';
 import { RESOURCES } from '../../constants/resources';
 import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface ResourceGridProps {
   resources: Record<PlantResourceType, number>;
@@ -20,14 +21,15 @@ const RESOURCE_EMOJI: Record<PlantResourceType, string> = {
 
 export const ResourceGrid: React.FC<ResourceGridProps> = ({ resources }) => {
   const safeResources = resources ?? ({} as Record<PlantResourceType, number>);
+  const { colors } = useTimeTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       {RESOURCE_KEYS.map((type, idx) => {
         const amount = safeResources[type] ?? 0;
         const resource = RESOURCES[type];
         return (
-          <View key={type} style={[styles.item, idx < 3 && styles.borderBottom]}>
+          <View key={type} style={[styles.item, idx < 3 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
             <View style={[styles.iconWrapper, { backgroundColor: resource.color + '15' }]}>
               {type === 'FERTILIZER' ? (
                 <Image source={require('../../../assets/phan_bon.png')} style={styles.imageIcon} />
@@ -42,8 +44,8 @@ export const ResourceGrid: React.FC<ResourceGridProps> = ({ resources }) => {
               )}
             </View>
             <View style={styles.info}>
-              <Text style={styles.amount}>{amount}</Text>
-              <Text style={styles.label}>{resource.label}</Text>
+              <Text style={[styles.amount, { color: colors.text }]}>{amount}</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>{resource.label}</Text>
             </View>
           </View>
         );

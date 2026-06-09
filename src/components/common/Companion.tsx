@@ -2,6 +2,7 @@ import { AppText as Text } from './AppText';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 // ── Messages theo context ──────────────────────────────────────────────────────
 export type CompanionContext =
@@ -68,6 +69,7 @@ interface CompanionProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const Companion: React.FC<CompanionProps> = ({ context, style }) => {
+  const { colors } = useTimeTheme();
   const [message, setMessage] = useState(() => pickMessage(context));
 
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -110,9 +112,9 @@ export const Companion: React.FC<CompanionProps> = ({ context, style }) => {
   return (
     <View style={[styles.wrapper, style]}>
       {/* Speech bubble */}
-      <Animated.View style={[styles.bubble, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <Text style={styles.bubbleText}>{message}</Text>
-        <View style={styles.tail} />
+      <Animated.View style={[styles.bubble, { backgroundColor: colors.surface, borderColor: colors.border, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        <Text style={[styles.bubbleText, { color: colors.text }]}>{message}</Text>
+        <View style={[styles.tail, { borderTopColor: colors.surface }]} />
       </Animated.View>
 
       {/* Character — ảnh thay đổi theo context */}
@@ -120,13 +122,13 @@ export const Companion: React.FC<CompanionProps> = ({ context, style }) => {
         <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
           <Image
             source={CONTEXT_IMAGE[context]}
-            style={styles.character}
+            style={[styles.character, { borderColor: colors.primary }]}
             resizeMode="cover"
           />
         </Animated.View>
       </TouchableOpacity>
 
-      <Text style={styles.tapHint}>Nhấn vào mình để nghe thêm 💬</Text>
+      <Text style={[styles.tapHint, { color: colors.textMuted }]}>Nhấn vào mình để nghe thêm 💬</Text>
     </View>
   );
 };

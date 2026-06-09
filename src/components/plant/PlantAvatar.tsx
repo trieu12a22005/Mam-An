@@ -4,6 +4,7 @@ import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { PlantStatus } from '../../types/plant.type';
 import { COLORS } from '../../constants/colors';
 import { PLANT_STAGES } from '../../constants/plantStages';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 const STAGE_EMOJI: Record<PlantStatus, string> = {
   SEED:     '🌰',
@@ -51,6 +52,7 @@ export const PlantAvatar: React.FC<PlantAvatarProps> = ({
   const dim = SIZES[size];
   const bg = STAGE_BG[status];
   const stageName = PLANT_STAGES[status]?.label ?? status;
+  const { colors } = useTimeTheme();
 
   // Ưu tiên: ảnh giai đoạn riêng → ảnh chung của loài → emoji
   const imageUrl =
@@ -107,15 +109,15 @@ export const PlantAvatar: React.FC<PlantAvatarProps> = ({
           {onRename ? (
             <TouchableOpacity onPress={onRename} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               {nickname ? (
-                <Text style={styles.nickname}>{nickname} <Text style={{fontSize: 14, color: COLORS.green.main}}>✏️</Text></Text>
+                <Text style={[styles.nickname, { color: colors.text }]}>{nickname} <Text style={{fontSize: 14, color: colors.primary}}>✏️</Text></Text>
               ) : (
-                <Text style={[styles.nickname, { color: COLORS.green.main, fontSize: 14 }]}>+ Đặt tên cây</Text>
+                <Text style={[styles.nickname, { color: colors.primary, fontSize: 14 }]}>+ Đặt tên cây</Text>
               )}
             </TouchableOpacity>
           ) : (
-            nickname ? <Text style={styles.nickname}>{nickname}</Text> : null
+            nickname ? <Text style={[styles.nickname, { color: colors.text }]}>{nickname}</Text> : null
           )}
-          <Text style={styles.stageLabel}>{stageName}</Text>
+          <Text style={[styles.stageLabel, { color: colors.textMuted }]}>{stageName}</Text>
         </View>
       )}
     </View>
@@ -140,6 +142,7 @@ const styles = StyleSheet.create({
   labels: {
     alignItems: 'center',
     gap: 2,
+    marginTop: 12, // Đẩy xuống để không đè lên vòng tròn
   },
   nickname: {
     fontSize: 18,

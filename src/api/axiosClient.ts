@@ -59,8 +59,12 @@ axiosClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Nếu lỗi 401 và chưa retry
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Nếu lỗi 401 và chưa retry, ĐỒNG THỜI không phải là các request liên quan đến auth
+    const isAuthUrl = originalRequest.url?.includes('/auth/login') || 
+                      originalRequest.url?.includes('/auth/refresh') ||
+                      originalRequest.url?.includes('/auth/register');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthUrl) {
       if (isRefreshing) {
         // Đang refresh — thêm vào hàng chờ
         return new Promise<string>((resolve, reject) => {
@@ -82,8 +86,9 @@ axiosClient.interceptors.response.use(
         const storedRefreshToken = await tokenStorage.getRefreshToken();
         if (!storedRefreshToken) throw new Error('No refresh token stored');
 
-        const res = await axiosClient.post<{ accessToken: string; refreshToken?: string }>(
-          '/auth/refresh',
+        // Sử dụng axios mặc định để tránh bị chặn lại bởi chính interceptor này
+        const res = await axios.post<{ accessToken: string; refreshToken?: string }>(
+          `${getBaseURL()}/auth/refresh`,
           { refreshToken: storedRefreshToken },
         );
         const { accessToken: newToken, refreshToken: newRefreshToken } = res.data;

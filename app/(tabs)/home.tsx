@@ -11,22 +11,26 @@ import { TaskCard } from '../../src/components/task/TaskCard';
 import { Screen } from '../../src/components/common/Screen';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { Companion } from '../../src/components/common/Companion';
+import { ThemedScreen } from '../../src/components/theme/ThemedScreen';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useVirtualPlant, usePlantUpdates } from '../../src/hooks/usePlant';
 import { useTasks } from '../../src/hooks/useTasks';
+import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
 import { COLORS } from '../../src/constants/colors';
 import { PlantResourceType } from '../../src/types/plant.type';
 import { formatRelativeTime } from '../../src/utils/date';
 import { useNotifications } from '../../src/hooks/useNotifications';
+import { TaskCompleteResult, ShareBonusInfo } from '../../src/components/task/TaskCompleteModal';
 
 // ── Section header ───────────────────────────────────────────────────────────
 const SectionHeader: React.FC<{
   title: string;
   actionLabel?: string;
   onAction?: () => void;
-}> = ({ title, actionLabel, onAction }) => (
+  textColor?: string;
+}> = ({ title, actionLabel, onAction, textColor }) => (
   <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>{title}</Text>
+    <Text style={[styles.sectionTitle, textColor ? { color: textColor } : undefined]}>{title}</Text>
     {actionLabel && onAction && (
       <TouchableOpacity onPress={onAction}>
         <Text style={styles.sectionAction}>{actionLabel}</Text>
@@ -46,33 +50,30 @@ export default function Home() {
   const { data: updates = [] } = usePlantUpdates();
   const { pendingTasks, completedTasks, completeTask, isLoading: tasksLoading } = useTasks();
   const { unreadCount } = useNotifications();
+  const { colors, isNight } = useTimeTheme();
 
   const careEffectRef = useRef<CareEffectHandle>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
   
   const [renameVisible, setRenameVisible] = useState(false);
   const [newName, setNewName] = useState('');
-
   const [plantMessage, setPlantMessage] = useState<string | null>(null);
 
   const latestUpdate = updates[0];
 
   // ── Hoàn thành task: chỉ lưu tài nguyên, không trigger hiệu ứng ────────────
-  const handleCompleteTask = async (taskId: string) => {
-    const completedTask = await completeTask(taskId, plant?.id);
-    if (completedTask) {
-      updatePlantAfterTask(completedTask);
-
-      const EMOJI: Record<string, string> = {
-        WATER: '💧', SUNLIGHT: '☀️', FERTILIZER: '🌿',
-        AIR: '🌬️', LOVE: '💚', DEW: '✨',
-      };
-      Alert.alert(
-        'Tài nguyên đã được lưu! 🌿',
-        `Bạn kiếm được ${EMOJI[completedTask.rewardResource] ?? ''} +${completedTask.rewardAmount} ${completedTask.rewardResource}.\nNhấn vào cây để chăm sóc nó nhé!`,
-        [{ text: 'OK', style: 'default' }],
-      );
-    }
+  const handleCompleteTask = async (result: TaskCompleteResult): Promise<ShareBonusInfo | void> => {
+    const { task, note, photo, shareToCommunity, visibility } = result;
+    const outcome = await completeTask({
+      task,
+      note,
+      photo,
+      shareToCommunity,
+      visibility,
+      virtualPlantId: plant?.id,
+    });
+    updatePlantAfterTask(task);
+    return outcome?.shareBonus;
   };
 
   // ── Người dùng chọn hành động chăm cây ──────────────────────────────────────
@@ -121,7 +122,7 @@ export default function Home() {
   }
 
   return (
-    <Screen scroll padded={false} backgroundColor={COLORS.background}>
+    <ThemedScreen showNightEffects>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -129,11 +130,11 @@ export default function Home() {
         {/* ── Top bar ── */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>
+            <Text style={[styles.greeting, { color: colors.text }]}>
               Xin chào, {user?.fullName?.split(' ').pop() ?? 'bạn'} 👋
             </Text>
-            <Text style={styles.greetingSubtitle}>
-              Hôm nay mình chăm cây một chút nhé 🌿
+            <Text style={[styles.greetingSubtitle, { color: colors.textMuted }]}>
+              {isNight ? 'Một buổi tối bình yên nhé 🌙' : 'Hôm nay mình chăm cây một chút nhé 🌿'}
             </Text>
           </View>
           <TouchableOpacity
@@ -164,16 +165,16 @@ export default function Home() {
         {plant && stage && stageProgress && (
           <>
             <TouchableOpacity
-              style={styles.plantCard}
+              style={[styles.plantCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setShowActionSheet(true)}
               activeOpacity={0.92}
             >
               {/* Hiệu ứng particle nằm trên avatar */}
               <View style={styles.avatarWrapper}>
                 {plantMessage && (
-                  <View style={styles.speechBubble}>
-                    <Text style={styles.speechText}>{plantMessage}</Text>
-                    <View style={styles.speechTail} />
+                  <View style={[styles.speechBubble, { backgroundColor: colors.surface }]}>
+                    <Text style={[styles.speechText, { color: colors.text }]}>{plantMessage}</Text>
+                    <View style={[styles.speechTail, { borderTopColor: colors.surface }]} />
                   </View>
                 )}
                 <PlantAvatar
@@ -189,21 +190,21 @@ export default function Home() {
                 <CareEffect ref={careEffectRef} />
               </View>
 
-              <View style={styles.careBtn}>
+              <View style={[styles.careBtn, { backgroundColor: colors.primary }]}>
                 <Text style={styles.careBtnText}>Chăm cây hôm nay</Text>
               </View>
 
               {/* Streak */}
-              <View style={styles.streak}>
+              <View style={[styles.streak, { backgroundColor: colors.primarySoft }]}>
                 {plant.streakCount === 0 ? (
                   <>
                     <Text style={styles.streakEmoji}>✨</Text>
-                    <Text style={styles.streakText}>Hành trình vừa bắt đầu</Text>
+                    <Text style={[styles.streakText, { color: colors.primary }]}>Hành trình vừa bắt đầu</Text>
                   </>
                 ) : (
                   <>
                     <Text style={styles.streakEmoji}>🌱</Text>
-                    <Text style={styles.streakText}>Bạn đã quay lại {plant.streakCount} ngày</Text>
+                    <Text style={[styles.streakText, { color: colors.primary }]}>Bạn đã quay lại {plant.streakCount} ngày</Text>
                   </>
                 )}
               </View>
@@ -263,17 +264,34 @@ export default function Home() {
         {/* ── Resources ── */}
         {plant && (
           <View style={styles.section}>
-            <SectionHeader title="Tài nguyên tích lũy" />
+            <SectionHeader title="Tài nguyên tích lũy" textColor={colors.text} />
             <ResourceGrid resources={plant.resources} />
           </View>
         )}
 
-        {/* ── Tasks preview ── */}
+        {/* ── Góc yên card ── */}
+        <TouchableOpacity
+          style={[styles.calmCard, { backgroundColor: colors.surfaceSoft }]}
+          onPress={() => router.push('/calm-space')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.calmLeft}>
+            <Text style={[styles.calmTitle, { color: colors.text }]}>Góc yên 🌿</Text>
+            <Text style={[styles.calmDesc, { color: colors.textMuted }]}>
+              Thở, thư giãn hoặc học cùng Mầm An.{'\n'}Cây sẽ lớn lên theo từng phút bạn dành cho bản thân.
+            </Text>
+          </View>
+          <View style={[styles.calmBtn, { backgroundColor: colors.primary }]}>
+            <Text style={styles.calmBtnText}>Bắt đầu</Text>
+          </View>
+        </TouchableOpacity>
+
         <View style={styles.section}>
           <SectionHeader
             title="Nhiệm vụ hôm nay"
             actionLabel="Xem tất cả →"
             onAction={() => router.push('/(tabs)/tasks')}
+            textColor={colors.text}
           />
           {tasksLoading ? (
             <Text style={styles.loadingText}>Đang tải nhiệm vụ...</Text>
@@ -291,10 +309,10 @@ export default function Home() {
                   ))}
                   {pendingTasks.length > 2 && (
                     <TouchableOpacity
-                      style={styles.moreBtn}
+                      style={[styles.moreBtn, { backgroundColor: colors.surfaceSoft }]}
                       onPress={() => router.push('/(tabs)/tasks')}
                     >
-                      <Text style={styles.moreBtnText}>
+                      <Text style={[styles.moreBtnText, { color: colors.primary }]}>
                         +{pendingTasks.length - 2} nhiệm vụ nữa đang chờ
                       </Text>
                     </TouchableOpacity>
@@ -304,19 +322,19 @@ export default function Home() {
 
               {/* Hành trình hôm nay */}
               {completedTasks.length > 0 && (
-                <View style={styles.journeyCard}>
-                  <Text style={styles.journeyTitle}>Hôm nay bạn đã chăm mình bằng:</Text>
+                <View style={[styles.journeyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.journeyTitle, { color: colors.text }]}>Hôm nay bạn đã chăm mình bằng:</Text>
                   <View style={styles.journeyList}>
                     {completedTasks.map((task) => (
                       <View key={task.id} style={styles.journeyRow}>
-                        <Text style={styles.journeyCheck}>✓</Text>
-                        <Text style={styles.journeyItem}>{task.title}</Text>
+                        <Text style={[styles.journeyCheck, { color: colors.primary }]}>✓</Text>
+                        <Text style={[styles.journeyItem, { color: colors.textMuted }]}>{task.title}</Text>
                       </View>
                     ))}
                   </View>
                   {pendingTasks.length === 0 && (
-                    <View style={styles.journeySummaryBox}>
-                      <Text style={styles.journeySummaryText}>
+                    <View style={[styles.journeySummaryBox, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.journeySummaryText, { color: colors.text }]}>
                         Hôm nay bạn đã làm {completedTasks.length} việc nhỏ cho bản thân. Vậy là tốt rồi 💚
                       </Text>
                     </View>
@@ -326,9 +344,9 @@ export default function Home() {
 
               {/* Empty state dự phòng (nếu list task rỗng 100%) */}
               {pendingTasks.length === 0 && completedTasks.length === 0 && (
-                <View style={styles.emptyTasks}>
+                <View style={[styles.emptyTasks, { backgroundColor: colors.surface }]}>
                   <Text style={styles.emptyIcon}>🎉</Text>
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                     Bạn chưa có nhiệm vụ nào cho hôm nay!
                   </Text>
                 </View>
@@ -340,8 +358,8 @@ export default function Home() {
         {/* ── Garden update ── */}
         {latestUpdate && (
           <View style={styles.section}>
-            <SectionHeader title="Cập nhật từ nhà vườn 📸" />
-            <View style={styles.updateCard}>
+            <SectionHeader title="Cập nhật từ nhà vườn 📸" textColor={colors.text} />
+            <View style={[styles.updateCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {latestUpdate.imageUrl ? (
                 <Image
                   source={{ uri: latestUpdate.imageUrl }}
@@ -350,10 +368,10 @@ export default function Home() {
                 />
               ) : null}
               <View style={styles.updateInfo}>
-                <Text style={styles.updateNote} numberOfLines={2}>
+                <Text style={[styles.updateNote, { color: colors.text }]} numberOfLines={2}>
                   {latestUpdate.note ?? 'Cây của bạn đang lớn lên từng ngày...'}
                 </Text>
-                <Text style={styles.updateTime}>
+                <Text style={[styles.updateTime, { color: colors.textMuted }]}>
                   {formatRelativeTime(latestUpdate.createdAt)}
                 </Text>
               </View>
@@ -363,7 +381,7 @@ export default function Home() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
-    </Screen>
+    </ThemedScreen>
   );
 }
 
@@ -651,4 +669,27 @@ const styles = StyleSheet.create({
     color: '#4ADE80',
     fontWeight: '700',
   },
+  // ── Góc yên card ──
+  calmCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.green[50],
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.green.light,
+    padding: 18,
+    gap: 16,
+    marginHorizontal: 20,
+    marginBottom: 8,
+  },
+  calmLeft: { flex: 1, gap: 6 },
+  calmTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text.primary },
+  calmDesc: { fontSize: 13, color: COLORS.text.secondary, lineHeight: 20 },
+  calmBtn: {
+    backgroundColor: COLORS.green.main,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  calmBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });

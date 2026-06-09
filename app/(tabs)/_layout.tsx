@@ -5,6 +5,7 @@ import { StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../../src/constants/colors';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
 import { LoadingView } from '../../src/components/common/LoadingView';
 
 // ── Emoji icon ────────────────────────────────────────────────────────────────
@@ -17,12 +18,12 @@ function TabIconEmoji({ emoji, focused }: { emoji: string; focused: boolean }) {
 // ── Layout ────────────────────────────────────────────────────────────────────
 export default function TabsLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { colors, isNight } = useTimeTheme();
   const insets = useSafeAreaInsets();
 
   if (isLoading) return <LoadingView />;
   if (!isAuthenticated) return <Redirect href="/login" />;
 
-  // Tab bar height + device navigation bar (gesture nav or 3-button nav)
   const tabBarHeight = 56 + insets.bottom;
 
   return (
@@ -34,10 +35,12 @@ export default function TabsLayout() {
           {
             height: tabBarHeight,
             paddingBottom: insets.bottom + 4,
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
           },
         ],
-        tabBarActiveTintColor: COLORS.green.main,
-        tabBarInactiveTintColor: COLORS.tabInactive,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
       }}
@@ -78,6 +81,15 @@ export default function TabsLayout() {
           title: 'Cây thật',
           tabBarIcon: ({ focused }) => (
             <TabIconEmoji emoji="📸" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: 'Chia sẻ',
+          tabBarIcon: ({ focused }) => (
+            <TabIconEmoji emoji="🌻" focused={focused} />
           ),
         }}
       />
