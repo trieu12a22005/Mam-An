@@ -11,7 +11,9 @@ export type CompanionContext =
   | 'all_done'
   | 'loading'
   | 'greeting'
-  | 'garden_update';
+  | 'garden_update'
+  | 'upgrade_companion'
+  | 'upgrade_plus';
 
 const MESSAGES: Record<CompanionContext, string[]> = {
   no_plant: [
@@ -43,6 +45,14 @@ const MESSAGES: Record<CompanionContext, string[]> = {
     'Nhà vườn vừa gửi ảnh mới nè! 📸\nXem cây của bạn đang lớn thế nào rồi!',
     'Cây thật của bạn đang phát triển tốt lắm! 🌿\nNhà vườn chăm sóc cẩn thận lắm đó.',
   ],
+  upgrade_companion: [
+    'Bạn muốn có một cây thật không?\nMình sẽ nhờ nhà vườn chăm và gửi ảnh cho bạn nhé ✨'
+  ],
+  upgrade_plus: [
+    'Nhật ký của bạn thật đẹp! Nếu được, mình rất muốn viết hồi âm lại cho bạn... 💭',
+    'Mình muốn hiểu thêm về cảm xúc của bạn qua các biểu đồ, bạn cho phép mình nhé? 📊',
+    'Góc Yên có nhiều bản nhạc hay lắm, mình cùng nghe thêm nhé! 🎵'
+  ],
 };
 
 // ── Ảnh theo từng trạng thái ──────────────────────────────────────────────────
@@ -53,6 +63,8 @@ const CONTEXT_IMAGE: Record<CompanionContext, any> = {
   loading:       require('../../../assets/thinking.png'),  // Đang suy nghĩ/chờ
   greeting:      require('../../../assets/happy.png'),     // Chào đón vui vẻ
   garden_update: require('../../../assets/wow.png'),       // Ngạc nhiên/phấn khích
+  upgrade_companion: require('../../../assets/thinking.png'),
+  upgrade_plus:  require('../../../assets/thinking.png'),
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -143,8 +155,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    maxWidth: 260,
+    paddingVertical: 8,
+    maxWidth: 240,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -155,9 +167,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   bubbleText: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     color: COLORS.text.primary,
-    lineHeight: 21,
+    lineHeight: 18,
     textAlign: 'center',
     fontWeight: '500',
   },

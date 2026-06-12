@@ -1,7 +1,7 @@
-import { AppText as Text } from './AppText';
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Text } from 'react-native';
 import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface EmptyStateProps {
   icon?: string;
@@ -14,11 +14,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
 }) => {
+  const { colors } = useTimeTheme();
+
   return (
     <View style={styles.container}>
       <Image source={require('../../../assets/image1.png')} style={{ width: 64, height: 64, borderRadius: 32, marginBottom: 16 }} />
-      <Text style={styles.title}>{title}</Text>
-      {description && <Text style={styles.description}>{description}</Text>}
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      {description && <Text style={[styles.description, { color: colors.textMuted }]}>{description}</Text>}
     </View>
   );
 };
@@ -37,12 +39,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.text.primary,
     textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: COLORS.text.muted,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 22,

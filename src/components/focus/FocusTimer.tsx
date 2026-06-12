@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { FocusSessionType } from '../../types/focusSession.type';
 import { formatCountdown, formatSessionTitle, getRandomFocusMessage } from '../../constants/focusSessions';
 import { COLORS } from '../../constants/colors';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
 
 interface Props {
   remainingSeconds: number;
@@ -16,6 +17,8 @@ interface Props {
 export const FocusTimer: React.FC<Props> = ({
   remainingSeconds, totalSeconds, progress, sessionType, isPaused,
 }) => {
+  const { colors, isNight } = useTimeTheme();
+
   // Lấy message ngẫu nhiên 1 lần khi mount (không đổi trong phiên)
   const hintRef = useRef(getRandomFocusMessage(sessionType));
   const sessionTitle = formatSessionTitle(sessionType, totalSeconds);
@@ -24,10 +27,10 @@ export const FocusTimer: React.FC<Props> = ({
   return (
     <View style={styles.wrapper}>
       {/* Tiêu đề phiên */}
-      <Text style={styles.sessionTitle}>{sessionTitle}</Text>
+      <Text style={[styles.sessionTitle, { color: colors.textMuted }]}>{sessionTitle}</Text>
 
       {/* Countdown to lớn */}
-      <Text style={styles.countdown}>{formatCountdown(remainingSeconds)}</Text>
+      <Text style={[styles.countdown, { color: colors.text }]}>{formatCountdown(remainingSeconds)}</Text>
 
       {/* Trạng thái */}
       <Text style={styles.statusDot}>
@@ -39,17 +42,17 @@ export const FocusTimer: React.FC<Props> = ({
         <View style={styles.barBg}>
           <View style={[styles.barFill, { width: `${pct}%` as any }]} />
         </View>
-        <Text style={styles.pctLabel}>{pct}%</Text>
+        <Text style={[styles.pctLabel, { color: colors.textMuted }]}>{pct}%</Text>
       </View>
 
       {/* Câu động viên */}
-      <Text style={styles.hint}>{hintRef.current}</Text>
+      <Text style={[styles.hint, isNight && { color: colors.textMuted }]}>{hintRef.current}</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: { alignItems: 'center', gap: 8, paddingHorizontal: 28 },
+  wrapper: { alignItems: 'center', gap: 5, paddingHorizontal: 28 },
 
   sessionTitle: {
     fontSize: 13,
@@ -60,13 +63,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   countdown: {
-    fontSize: 76,
+    fontSize: 52,
     fontWeight: '200',
     color: COLORS.text.primary,
-    letterSpacing: 4,
-    // tabular nums để không nhảy layout
+    letterSpacing: 3,
     fontVariant: ['tabular-nums'],
-    lineHeight: 84,
+    lineHeight: 60,
   },
   statusDot: {
     fontSize: 12,
@@ -82,12 +84,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
   },
   barBg: {
     flex: 1,
-    height: 5,
-    borderRadius: 3,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: COLORS.green.light,
     overflow: 'hidden',
   },
@@ -106,11 +108,11 @@ const styles = StyleSheet.create({
 
   // Câu động viên
   hint: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.text.secondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     fontStyle: 'italic',
-    marginTop: 12,
+    marginTop: 6,
   },
 });

@@ -4,8 +4,13 @@ import { Modal, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { FocusSessionOption, FocusSessionStatus } from '../../types/focusSession.type';
 import { getCompletionMessage } from '../../constants/focusSessions';
 import { COLORS } from '../../constants/colors';
-import { PlantAvatar } from '../plant/PlantAvatar';
-import { VirtualPlant } from '../../types/plant.type';
+import { useTimeTheme } from '../../contexts/TimeThemeContext';
+import { Image } from 'react-native';
+
+const MASCOT_IMAGES = {
+  happy: require('../../../assets/happy.png'),
+  thinking: require('../../../assets/thinking.png'),
+};
 
 interface Props {
   visible: boolean;
@@ -22,6 +27,7 @@ export const FocusCompleteModal: React.FC<Props> = ({
   visible, status, option, actualRewardAmount, actualGrowthReward,
   plant, onGoHome, onResume,
 }) => {
+  const { colors } = useTimeTheme();
   if (!option) return null;
 
   const isComplete = status === 'COMPLETED';
@@ -30,22 +36,22 @@ export const FocusCompleteModal: React.FC<Props> = ({
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.avatarContainer}>
-            <PlantAvatar
-              status={plant?.status ?? 'GROWING'}
-              size="md"
-              flowerType={plant?.flowerType}
+        <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          <View style={[styles.mascotWrap, { backgroundColor: colors.surfaceSoft }]}>
+            <Image
+              source={isComplete ? MASCOT_IMAGES.happy : MASCOT_IMAGES.thinking}
+              style={styles.mascotImg}
+              resizeMode="contain"
             />
           </View>
 
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: colors.text }]}>
             {isComplete
               ? 'Bạn đã ngồi cùng cây rồi 🌿'
               : 'Bạn đã ở cùng cây một chút rồi'}
           </Text>
 
-          <Text style={styles.message}>
+          <Text style={[styles.message, { color: colors.text }]}>
             {isComplete
               ? getCompletionMessage(option.type)
               : 'Dù chưa hết phiên, khoảng thời gian này vẫn đáng quý. Khi sẵn sàng, mình có thể bắt đầu lại nhẹ nhàng nhé.'}
@@ -53,9 +59,9 @@ export const FocusCompleteModal: React.FC<Props> = ({
 
           {/* Reward — chỉ hiện khi có */}
           {(isComplete || isPartial) && actualRewardAmount > 0 && (
-            <View style={styles.rewardBox}>
-              <Text style={styles.rewardTitle}>Cây vừa nhận được</Text>
-              <Text style={styles.rewardValue}>
+            <View style={[styles.rewardBox, { backgroundColor: colors.surfaceSoft }]}>
+              <Text style={[styles.rewardTitle, { color: colors.textMuted }]}>Cây vừa nhận được</Text>
+              <Text style={[styles.rewardValue, { color: colors.primary }]}>
                 +{actualRewardAmount} {option.rewardResource}
               </Text>
               <Text style={styles.rewardGrowth}>
@@ -66,13 +72,13 @@ export const FocusCompleteModal: React.FC<Props> = ({
 
           {/* Buttons */}
           {!isComplete && onResume && (
-            <TouchableOpacity style={styles.btnResume} onPress={onResume}>
+            <TouchableOpacity style={[styles.btnResume, { backgroundColor: colors.primary }]} onPress={onResume}>
               <Text style={styles.btnResumeText}>Tiếp tục</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.btnHome} onPress={onGoHome}>
-            <Text style={styles.btnHomeText}>
+          <TouchableOpacity style={[styles.btnHome, { borderColor: colors.border }]} onPress={onGoHome}>
+            <Text style={[styles.btnHomeText, { color: colors.textMuted }]}>
               {isComplete ? 'Về khu vườn' : 'Kết thúc phiên'}
             </Text>
           </TouchableOpacity>
@@ -85,44 +91,49 @@ export const FocusCompleteModal: React.FC<Props> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   sheet: {
-    backgroundColor: COLORS.surface,
     borderRadius: 24,
     padding: 32,
     width: '100%',
     alignItems: 'center',
     gap: 16,
+    elevation: 10, shadowColor: '#000',
+    shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 },
   },
-  avatarContainer: {
-    marginBottom: 8,
+  mascotWrap: {
+    width: 100, height: 100,
+    marginTop: -50, marginBottom: 8,
+    borderRadius: 50,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 5, shadowColor: '#000',
+    shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
   },
+  mascotImg: { width: 90, height: 90 },
   title: {
     fontSize: 20, fontWeight: '700',
-    color: COLORS.text.primary, textAlign: 'center',
+    textAlign: 'center',
   },
   message: {
-    fontSize: 14, color: COLORS.text.secondary,
+    fontSize: 14,
     textAlign: 'center', lineHeight: 24,
   },
   rewardBox: {
-    backgroundColor: COLORS.green[50],
     borderRadius: 16,
     paddingVertical: 16, paddingHorizontal: 24,
     alignItems: 'center',
     gap: 4,
     width: '100%',
   },
-  rewardTitle: { fontSize: 12, color: COLORS.text.muted, fontWeight: '500' },
-  rewardValue: { fontSize: 22, fontWeight: '800', color: COLORS.green.dark },
+  rewardTitle: { fontSize: 12, fontWeight: '500' },
+  rewardValue: { fontSize: 22, fontWeight: '800' },
   rewardGrowth: { fontSize: 13, color: COLORS.green.main, fontWeight: '600' },
   btnResume: {
     width: '100%', height: 50,
-    backgroundColor: COLORS.green.main,
     borderRadius: 14,
     justifyContent: 'center', alignItems: 'center',
   },
@@ -132,7 +143,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.border,
   },
-  btnHomeText: { color: COLORS.text.secondary, fontWeight: '600', fontSize: 14 },
+  btnHomeText: { fontWeight: '600', fontSize: 14 },
 });

@@ -11,6 +11,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "androidNavigationBar": {
+      "visible": "sticky-immersive"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.maman.garden"

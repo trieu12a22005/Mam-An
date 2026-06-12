@@ -9,7 +9,7 @@ function generateStars(count: number) {
   for (let i = 0; i < count; i++) {
     stars.push({
       x: Math.random() * SCREEN_W,
-      y: Math.random() * SCREEN_H * 0.7,
+      y: Math.random() * SCREEN_H,
       size: Math.random() * 2.5 + 1.5, // 1.5–4px
       opacity: Math.random() * 0.35 + 0.15, // 0.15–0.5
     });
@@ -117,7 +117,7 @@ interface Props {
 }
 
 export const NightSkyOverlay: React.FC<Props> = ({ intensity = 'normal' }) => {
-  const starCount = intensity === 'low' ? 12 : 25;
+  const starCount = intensity === 'low' ? 30 : 80;
   
   // Tăng tần suất sao băng xuất hiện để dễ có hiệu ứng nhiều sao cùng lúc
   const minInterval = intensity === 'low' ? 15_000 : 5_000;
@@ -143,7 +143,7 @@ export const NightSkyOverlay: React.FC<Props> = ({ intensity = 'normal' }) => {
   }, [shootingStarsCount, minInterval, maxInterval]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { zIndex: 0, elevation: 0 }]} pointerEvents="none">
       {/* Sao tĩnh */}
       {stars.map((s, i) => (
         <View

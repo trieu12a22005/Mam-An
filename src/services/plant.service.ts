@@ -48,6 +48,12 @@ export const plantService = {
     return res.data.data;
   },
 
+  /** GET /zen-flowers — danh sách cây cho góc thư giãn */
+  getZenFlowers: async (): Promise<FlowerType[]> => {
+    const res = await axiosClient.get<{ data: FlowerType[] }>('/zen-flowers');
+    return res.data.data;
+  },
+
   /** POST /virtual-plants/start — tạo cây ảo mới */
   startVirtualPlant: async (
     flowerTypeId: string,

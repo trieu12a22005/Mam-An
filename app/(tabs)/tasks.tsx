@@ -33,7 +33,7 @@ export default function Tasks() {
   const done    = tasks.filter((t) =>  t.completedToday);
 
   return (
-    <ThemedScreen>
+    <ThemedScreen showNightEffects>
       <FlatList
         data={[...pending, ...done]}
         keyExtractor={(item) => item.id}

@@ -1,13 +1,14 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React, { useState } from 'react';
 import {
-  View, TextInput, StyleSheet, FlatList, Image, Alert,
+  View, TextInput, StyleSheet, FlatList, Image, Alert, TouchableOpacity
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedScreen } from '../../src/components/theme/ThemedScreen';
 import { MoodSelector } from '../../src/components/journal/MoodSelector';
 import { AppButton } from '../../src/components/common/AppButton';
 import { LoadingView } from '../../src/components/common/LoadingView';
+import { PremiumUpgradeModal } from '../../src/components/common/PremiumUpgradeModal';
 import { EmptyState } from '../../src/components/common/EmptyState';
 import { useJournal } from '../../src/hooks/useJournal';
 import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
@@ -15,6 +16,8 @@ import { MoodType, MoodJournal } from '../../src/types/journal.type';
 import { MOOD_OPTIONS, getMoodOption } from '../../src/constants/moods';
 import { COLORS } from '../../src/constants/colors';
 import { formatDate } from '../../src/utils/date';
+import { useMyEntitlements } from '../../src/hooks/usePlans';
+import { useRouter } from 'expo-router';
 
 const NEGATIVE_MOODS: MoodType[] = ['SAD', 'ANXIOUS', 'TIRED'];
 
@@ -74,13 +77,29 @@ const hStyles = StyleSheet.create({
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Journal() {
   const { journals, isLoading, isCreating, createJournal } = useJournal();
+  const { data: entitlements } = useMyEntitlements();
+  const router = useRouter();
   const { colors } = useTimeTheme();
   const [selectedMood, setSelectedMood] = useState<MoodType | undefined>(undefined);
   const [note, setNote] = useState('');
+  const [useAi, setUseAi] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const insets = useSafeAreaInsets();
 
   const currentOption = selectedMood ? getMoodOption(selectedMood) : undefined;
   const isNegativeMood = selectedMood !== undefined && NEGATIVE_MOODS.includes(selectedMood);
+
+  const handleToggleAi = () => {
+    if (!useAi) {
+      if (entitlements && !entitlements.canUseAiJournalReply) {
+        setShowUpgradeModal(true);
+        return;
+      }
+      setUseAi(true);
+    } else {
+      setUseAi(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!selectedMood) {
@@ -88,9 +107,12 @@ export default function Journal() {
       return;
     }
     try {
+      // Backend handles AI reply based on entitlement implicitly, but we could pass useAi flag if needed.
+      // For MVP, backend checks if user has entitlement, if yes, it generates.
       await createJournal({ mood: selectedMood, note });
       setSelectedMood(undefined);
       setNote('');
+      setUseAi(false);
     } catch {
       Alert.alert('Ôi!', 'Có lỗi xảy ra, vui lòng thử lại.');
     }
@@ -99,12 +121,14 @@ export default function Journal() {
   if (isLoading) return <LoadingView message="Đang tải nhật ký..." />;
 
   return (
-    <ThemedScreen>
+    <ThemedScreen showNightEffects>
       <FlatList
         data={journals}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListHeaderComponent={
           <View style={styles.headerArea}>
             {/* Header */}
@@ -172,6 +196,13 @@ export default function Journal() {
                 {note.length}/300
               </Text>
 
+              <TouchableOpacity style={styles.aiToggleRow} onPress={handleToggleAi}>
+                <Text style={[styles.aiToggleText, { color: colors.text }]}>🌱 Nhận phản hồi từ cây (AI)</Text>
+                <View style={[styles.toggleCircle, useAi && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                  {useAi && <View style={styles.toggleDot} />}
+                </View>
+              </TouchableOpacity>
+
               <AppButton
                 title="Lưu nhật ký"
                 onPress={handleSave}
@@ -196,6 +227,13 @@ export default function Journal() {
         }
         renderItem={({ item }) => <JournalItem item={item} colors={colors} />}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+      />
+
+      <PremiumUpgradeModal 
+        visible={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        context="upgrade_plus"
+        title="Tính năng này thuộc Mầm Ảo Plus"
       />
     </ThemedScreen>
   );
@@ -238,4 +276,31 @@ const styles = StyleSheet.create({
   },
   charCount: { fontSize: 11, textAlign: 'right', marginTop: -8 },
   historyTitle: { fontSize: 17, fontWeight: '700' },
+  aiToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EAEAEA',
+  },
+  aiToggleText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  toggleCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#CCC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFF',
+  },
 });

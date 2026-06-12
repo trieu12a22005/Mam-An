@@ -7,6 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Screen } from '../../src/components/common/Screen';
+import { ThemedScreen } from '../../src/components/theme/ThemedScreen';
 import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -15,7 +16,6 @@ import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
 import { AppThemeMode } from '../../src/types/theme.type';
 import { COLORS } from '../../src/constants/colors';
 import { PLANT_STAGES } from '../../src/constants/plantStages';
-import { testLocalNotification } from '../../src/services/pushNotification.service';
 
 // ── Mascot farewell messages ────────────────────────────────────────────────
 const FAREWELL_MESSAGES = [
@@ -105,7 +105,7 @@ const LogoutModal: React.FC<{
               <Text style={[styles.btnCancelText, { color: colors.text }]}>Ở lại chăm cây</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.btnConfirm, { backgroundColor: '#EF4444' }]} onPress={onConfirm} activeOpacity={0.8}>
-              <Text style={styles.btnConfirmText}>Tạm biệt 👋</Text>
+              <Text style={[styles.btnConfirmText, { color: '#ffffff' }]}>Tạm biệt 👋</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -178,7 +178,7 @@ export default function Profile() {
     .toUpperCase();
 
   return (
-    <>
+    <ThemedScreen showNightEffects>
       <LogoutModal
         visible={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
@@ -186,7 +186,7 @@ export default function Profile() {
       />
 
       <ScrollView
-        style={[styles.scroll, { backgroundColor: colors.background }]}
+        style={[styles.scroll, { backgroundColor: 'transparent' }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -370,14 +370,18 @@ export default function Profile() {
             />
             <Divider />
             <SettingRow
-              icon="📬"
-              label="Xem thông báo"
-              onPress={() => router.push('/notifications')}
+              icon="🎁"
+              label="Gói dịch vụ của tôi"
+              onPress={() => router.push('/packages')}
+            />
+            <Divider />
+            <SettingRow
+              icon="📦"
+              label="Đơn hàng của tôi"
+              onPress={() => router.push('/my-orders')}
             />
             <Divider />
             <SettingRow icon="ℹ️" label="Về ứng dụng" onPress={() => {}} />
-            <Divider />
-            <SettingRow icon="🧪" label="Test thông báo (Local)" onPress={testLocalNotification} />
           </View>
 
           {/* ── Disclaimer ── */}
@@ -393,13 +397,13 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </>
+    </ThemedScreen>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { paddingBottom: 48 },
 
   // Hero

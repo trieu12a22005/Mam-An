@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { TimeThemeProvider } from '../src/contexts/TimeThemeContext';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { requestNotificationPermission } from '../src/services/pushNotification.service';
 import * as Updates from 'expo-updates';
+import * as NavigationBar from 'expo-navigation-bar';
 import { backgroundMusicControl } from '../src/utils/backgroundMusicControl';
 
 const queryClient = new QueryClient({
@@ -46,6 +47,18 @@ export default function RootLayout() {
     setupAudio();
     return () => { isMounted = false; };
   }, []); // Remove player from dependencies to prevent infinite loop
+
+  // ── Ẩn / làm trong suốt Navigation Bar trên Android ──────────────────────
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (NavigationBar && typeof NavigationBar.setVisibilityAsync === 'function') {
+        NavigationBar.setVisibilityAsync('hidden').catch(() => {});
+      }
+      if (NavigationBar && typeof NavigationBar.setBehaviorAsync === 'function') {
+        NavigationBar.setBehaviorAsync('inset-swipe').catch(() => {});
+      }
+    }
+  }, []);
 
   // ── Xin quyền thông báo ngay khi app khởi động ───────────────────────────
   useEffect(() => {

@@ -1,25 +1,49 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React, { useCallback } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedScreen } from '../../src/components/theme/ThemedScreen';
 import { TimelineItem } from '../../src/components/timeline/TimelineItem';
 import { EmptyState } from '../../src/components/common/EmptyState';
 import { LoadingView } from '../../src/components/common/LoadingView';
+import { Companion } from '../../src/components/common/Companion';
 import { usePlantUpdates } from '../../src/hooks/usePlant';
 import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
 
+import { useMyEntitlements } from '../../src/hooks/usePlans';
+import { useRouter } from 'expo-router';
+
 export default function Timeline() {
   const { data: updates = [], isLoading, refetch, isRefetching } = usePlantUpdates();
+  const { data: entitlements, isLoading: isLoadingEntitlements } = useMyEntitlements();
   const { colors } = useTimeTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
-  if (isLoading) return <LoadingView message="Đang tải cập nhật từ nhà vườn..." />;
+  if (isLoading || isLoadingEntitlements) return <LoadingView message="Đang tải cập nhật từ nhà vườn..." />;
+
+  if (entitlements && !entitlements.hasRealPlant) {
+    return (
+      <ThemedScreen showNightEffects>
+        <View style={[styles.list, { paddingBottom: insets.bottom + 40, flex: 1, justifyContent: 'center' }]}>
+          <View style={[styles.upgradeCard, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: 'center' }]}>
+            <Companion context="upgrade_companion" style={{ marginBottom: 16 }} />
+            <TouchableOpacity 
+              style={[styles.upgradeBtn, { backgroundColor: colors.primary, width: '100%' }]}
+              onPress={() => router.push('/packages')}
+            >
+              <Text style={styles.upgradeBtnText}>Xem gói Hướng Dương Đồng Hành</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ThemedScreen>
+    );
+  }
 
   return (
-    <ThemedScreen>
+    <ThemedScreen showNightEffects>
       <FlatList
         data={updates}
         keyExtractor={(item) => item.id}
@@ -77,4 +101,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20,
   },
   countText: { fontSize: 12, fontWeight: '600' },
+  upgradeCard: {
+    borderRadius: 20, padding: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 12,
+    elevation: 4,
+    alignItems: 'center',
+  },
+  upgradeTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  upgradeDesc: { fontSize: 14, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
+  upgradeBtn: {
+    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 24,
+    width: '100%', alignItems: 'center'
+  },
+  upgradeBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });

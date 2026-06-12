@@ -209,7 +209,7 @@ export default function SelectFlower() {
   const sorted = [...available, ...unavailable];
 
   return (
-    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
+    <View style={styles.root}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -254,7 +254,7 @@ export default function SelectFlower() {
       />
 
       {/* Nickname input + CTA */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
         {selectedId && (
           <TextInput
             style={styles.nicknameInput}
@@ -380,7 +380,6 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
     gap: 12,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StatusBar } from 'react-native';
+import { View, StyleSheet, ViewStyle, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTimeTheme } from '../../contexts/TimeThemeContext';
 import { NightSkyOverlay } from './NightSkyOverlay';
@@ -9,6 +9,11 @@ interface Props {
   style?: ViewStyle;
   showNightEffects?: boolean;
   nightEffectIntensity?: 'low' | 'normal';
+  /**
+   * Bọc nội dung trong KeyboardAvoidingView để bàn phím không che ô nhập.
+   * Mặc định: true. Tắt đối với màn hình không có input (vd: timer đang chạy).
+   */
+  avoidKeyboard?: boolean;
 }
 
 /**
@@ -27,6 +32,7 @@ export const ThemedScreen: React.FC<Props> = ({
   style,
   showNightEffects = false,
   nightEffectIntensity = 'normal',
+  avoidKeyboard = true,
 }) => {
   const { colors, isNight, settings } = useTimeTheme();
   const insets = useSafeAreaInsets();
@@ -50,9 +56,19 @@ export const ThemedScreen: React.FC<Props> = ({
       ]}
     >
       <StatusBar barStyle={barStyle} backgroundColor={colors.background} />
-      {children}
       {shouldShowStars && (
         <NightSkyOverlay intensity={nightEffectIntensity} />
+      )}
+      {avoidKeyboard ? (
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          {children}
+        </KeyboardAvoidingView>
+      ) : (
+        children
       )}
     </View>
   );
@@ -62,4 +78,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  flex: {
+    flex: 1,
+  },
 });
+

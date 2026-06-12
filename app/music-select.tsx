@@ -2,14 +2,25 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   View, ScrollView, TouchableOpacity, StyleSheet,
   StatusBar, Platform, ActivityIndicator, Animated,
+  Modal, Pressable, Image
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { AppText as Text } from '../src/components/common/AppText';
 import { COLORS } from '../src/constants/colors';
-import { fetchCalmMusicTracks, CalmMusicTrack } from '../src/api/calmMusicApi';
+import { fetchCalmMusicTracks, CalmMusicTrack, fetchMyPoints, unlockTrack } from '../src/api/calmMusicApi';
+import { Alert } from 'react-native';
 import { calmSessionStore } from '../src/store/calmSessionStore';
 import { ThemedScreen } from '../src/components/theme/ThemedScreen';
+import { useTimeTheme } from '../src/contexts/TimeThemeContext';
+
+const MASCOT_IMAGES = {
+  thinking: require('../assets/thinking.png'),
+  happy: require('../assets/happy.png'),
+  wow: require('../assets/wow.png'),
+  boring: require('../assets/boring.png'),
+};
 
 // ── Preview Player (component pattern: mount/unmount để tạo fresh player) ─────
 function PreviewPlayer({ uri, onStop }: { uri: string; onStop: () => void }) {
@@ -57,6 +68,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function MusicSelectScreen() {
+  const { colors } = useTimeTheme();
+  const insets = useSafeAreaInsets();
   const [tracks, setTracks] = useState<CalmMusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('ALL');
@@ -64,6 +77,29 @@ export default function MusicSelectScreen() {
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(60);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Điểm tích lũy
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [unlockedCount, setUnlockedCount] = useState(0);
+  const [maxRedeemSongs, setMaxRedeemSongs] = useState(0);
+  const [isUnlocking, setIsUnlocking] = useState<string | null>(null);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    visible: boolean;
+    type: 'error' | 'confirm' | 'success';
+    title: string;
+    message: string;
+    mascot?: 'thinking' | 'happy' | 'wow' | 'boring';
+    onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
 
   // Waveform animation
   const bars = useRef([...Array(5)].map(() => new Animated.Value(0.3))).current;
@@ -75,6 +111,14 @@ export default function MusicSelectScreen() {
       .then(setTracks)
       .catch(console.error)
       .finally(() => setIsLoading(false));
+    // Tải điểm của user
+    fetchMyPoints()
+      .then((p) => {
+        setAvailablePoints(p.availablePoints);
+        setUnlockedCount(p.unlockedCount);
+        setMaxRedeemSongs(p.maxRedeemSongs);
+      })
+      .catch(() => {});
   }, []);
 
   // Waveform helpers
@@ -135,17 +179,93 @@ export default function MusicSelectScreen() {
 
   // Tap text/row để chọn track
   const handleSelectTrack = useCallback((track: CalmMusicTrack) => {
+    if (!track.isUnlocked) return; // Chưa unlock → không chọn được
     setSelectedTrack(prev => prev?.id === track.id ? null : track);
   }, []);
 
+  // Mở khóa bài hát bằng điểm
+  const handleUnlock = useCallback((track: CalmMusicTrack) => {
+    if (availablePoints < track.pointCost) {
+      setModalConfig({
+        visible: true,
+        type: 'error',
+        title: 'Chưa đủ điểm rồi! 🌱',
+        message: `Bài "${track.titleVi}" cần ${track.pointCost} điểm.\nĐiểm của bạn hiện tại: ${availablePoints} ⭐\n\nHãy chăm cây thêm để tích lũy điểm nhé! 🪴`,
+        mascot: 'thinking',
+        confirmText: 'Được rồi!',
+        onConfirm: () => setModalConfig(prev => ({ ...prev, visible: false }))
+      });
+      return;
+    }
+
+    setModalConfig({
+      visible: true,
+      type: 'confirm',
+      title: 'Mở khóa bài hát 🔓',
+      message: `Mầm An muốn dùng ${track.pointCost} ⭐ điểm để mở khóa:\n\n🎵 "${track.titleVi}"\n\nSau khi mở khóa bạn còn ${availablePoints - track.pointCost} điểm.`,
+      mascot: 'wow',
+      confirmText: '✨ Mở khóa ngay!',
+      cancelText: 'Thôi để sau',
+      onConfirm: async () => {
+        setModalConfig(prev => ({ ...prev, visible: false }));
+        setIsUnlocking(track.id);
+        try {
+          const result = await unlockTrack(track.id);
+          setAvailablePoints(result.remainingPoints);
+          setUnlockedCount(prev => prev + 1);
+          setTracks(prev => prev.map(t =>
+            t.id === track.id ? { ...t, isUnlocked: true } : t
+          ));
+          setModalConfig({
+            visible: true,
+            type: 'success',
+            title: '🎉 Mở khóa thành công!',
+            message: `Tuyệt vời! Bạn đã mở khóa:\n🎵 "${track.titleVi}"\n\nCòn lại: ${result.remainingPoints} ⭐ điểm\n\nHãy tận hưởng khoảnh khắc yên tĩnh nhé! 🌸`,
+            mascot: 'happy',
+            confirmText: 'Cảm ơn Mầm An! 💚',
+            onConfirm: () => setModalConfig(prev => ({ ...prev, visible: false }))
+          });
+        } catch (e: any) {
+          const msg = e?.response?.data?.message ?? e.message ?? '';
+          let friendlyMsg = 'Mầm An gặp sự cố nhỏ, bạn thử lại sau nhé!';
+          let mascotType: 'thinking' | 'boring' = 'thinking';
+          
+          if (msg.includes('đủ điểm') || msg.includes('cần')) {
+            friendlyMsg = `Bạn cần thêm điểm để mở khóa bài này.\n\nHãy chăm cây thêm để tích lũy điểm nhé! 🪴`;
+          } else if (msg.includes('tối đa') || msg.includes('giới hạn')) {
+            friendlyMsg = `Gói hiện tại của bạn đã đạt giới hạn mở khóa.\n\nNâng cấp gói để mở thêm nhiều bài hơn nhé! 🌻`;
+            mascotType = 'boring';
+          } else if (msg.includes('đã mở')) {
+            friendlyMsg = `Bài hát này bạn đã mở khóa rồi! 🎵`;
+          } else if (msg.includes('404') || msg.includes('tìm thấy')) {
+            friendlyMsg = `Mầm An không tìm thấy bài hát này, thử tải lại danh sách nhé! 🔄`;
+          }
+          
+          setModalConfig({
+            visible: true,
+            type: 'error',
+            title: '🌿 Ối, có gì đó sai sai!',
+            message: friendlyMsg,
+            mascot: mascotType,
+            confirmText: 'OK, mình hiểu rồi!',
+            onConfirm: () => setModalConfig(prev => ({ ...prev, visible: false }))
+          });
+        } finally {
+          setIsUnlocking(null);
+        }
+      }
+    });
+  }, [availablePoints]);
+
   // Xác nhận bắt đầu phiên
   const handleConfirm = () => {
-    // Dừng preview trước
     stopPreviewCountdown();
     setPreviewingId(null);
 
     calmSessionStore.setTrack(selectedTrack);
     calmSessionStore.confirm();
+    // zen-setup dùng router.replace nên stack chỉ còn calm-space → music-select
+    // → back 1 lần là về calm-space
     router.back();
   };
 
@@ -178,25 +298,37 @@ export default function MusicSelectScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.surfaceSoft }]} onPress={() => router.back()}>
+          <Text style={[styles.backIcon, { color: colors.primary }]}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Chọn nhạc nền 🎵</Text>
-          <Text style={styles.headerSub}>Nhấn icon để nghe thử · nhấn hàng để chọn</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Chọn nhạc nền 🎵</Text>
+          <Text style={[styles.headerSub, { color: colors.textMuted }]}>Nhấn icon để nghe thử · nhấn hàng để chọn</Text>
         </View>
-        <View style={{ width: 40 }} />
+        {/* Điểm tích lũy */}
+        <View style={[styles.pointsBadge, { backgroundColor: colors.primarySoft }]}>
+          <Text style={[styles.pointsText, { color: colors.primary }]}>⭐ {availablePoints}</Text>
+        </View>
       </View>
+
+      {/* Thông tin giới hạn gói */}
+      {maxRedeemSongs > 0 && (
+        <View style={[styles.limitBar, { backgroundColor: colors.surfaceSoft }]}>
+          <Text style={[styles.limitText, { color: colors.textMuted }]}>
+            🔓 Đã mở: {unlockedCount}/{maxRedeemSongs} bài · Còn: {availablePoints} điểm
+          </Text>
+        </View>
+      )}
 
       {/* Filter tabs */}
       <View style={styles.filterRow}>
         {(['ALL', 'INSTRUMENTAL', 'LYRICS'] as FilterType[]).map((f) => (
           <TouchableOpacity
             key={f}
-            style={[styles.tab, filter === f && styles.tabActive]}
+            style={[styles.tab, { backgroundColor: colors.surfaceSoft }, filter === f && { backgroundColor: colors.primary }]}
             onPress={() => setFilter(f)}
           >
-            <Text style={[styles.tabText, filter === f && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textMuted }, filter === f && styles.tabTextActive]}>
               {f === 'ALL' ? 'Tất cả' : f === 'INSTRUMENTAL' ? '🎹 Không lời' : '🎤 Có lời'}
             </Text>
           </TouchableOpacity>
@@ -206,8 +338,8 @@ export default function MusicSelectScreen() {
       {/* Track list */}
       {isLoading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={COLORS.green.main} size="large" />
-          <Text style={styles.loadingText}>Đang tải danh sách nhạc…</Text>
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Đang tải danh sách nhạc…</Text>
         </View>
       ) : (
         <ScrollView
@@ -217,16 +349,16 @@ export default function MusicSelectScreen() {
         >
           {/* Không nhạc option */}
           <TouchableOpacity
-            style={[styles.trackRow, !selectedTrack && styles.trackRowSelected]}
+            style={[styles.trackRow, { borderColor: 'transparent' }, !selectedTrack && { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}
             onPress={() => setSelectedTrack(null)}
             activeOpacity={0.75}
           >
-            <View style={[styles.iconBox, !selectedTrack && styles.iconBoxSelected]}>
+            <View style={[styles.iconBox, { backgroundColor: colors.surfaceSoft }, !selectedTrack && { backgroundColor: colors.primarySoft }]}>
               <Text style={styles.emoji}>🔇</Text>
             </View>
             <View style={styles.trackInfo}>
-              <Text style={styles.trackTitle}>Không nhạc</Text>
-              <Text style={styles.trackSub}>Tận hưởng sự yên tĩnh</Text>
+              <Text style={[styles.trackTitle, { color: colors.text }]}>Không nhạc</Text>
+              <Text style={[styles.trackSub, { color: colors.textMuted }]}>Tận hưởng sự yên tĩnh</Text>
             </View>
             {!selectedTrack && (
               <View style={styles.checkBadge}>
@@ -236,13 +368,13 @@ export default function MusicSelectScreen() {
           </TouchableOpacity>
 
           <View style={styles.separator}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>Danh sách nhạc</Text>
-            <View style={styles.separatorLine} />
+            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.separatorText, { color: colors.textMuted }]}>Danh sách nhạc</Text>
+            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
           </View>
 
           {filteredTracks.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               {tracks.length === 0
                 ? 'Chưa có bản nhạc nào trong thư viện.'
                 : 'Không có nhạc phù hợp với bộ lọc.'}
@@ -254,13 +386,18 @@ export default function MusicSelectScreen() {
 
               return (
                 <View key={track.id}>
-                  <View style={[styles.trackRow, isSelected && styles.trackRowSelected]}>
+                  <View style={[
+                    styles.trackRow, 
+                    { borderColor: 'transparent' },
+                    isSelected && { backgroundColor: colors.primarySoft, borderColor: colors.primary }
+                  ]}>
                     {/* Icon — nhấn để preview */}
                     <TouchableOpacity
                       style={[
                         styles.iconBox,
-                        isSelected && styles.iconBoxSelected,
-                        isPreviewing && styles.iconBoxPreviewing,
+                        { backgroundColor: colors.surfaceSoft },
+                        isSelected && { backgroundColor: colors.primarySoft },
+                        isPreviewing && { backgroundColor: colors.primary },
                       ]}
                       onPress={() => handleTogglePreview(track)}
                       activeOpacity={0.7}
@@ -287,16 +424,15 @@ export default function MusicSelectScreen() {
                       onPress={() => handleSelectTrack(track)}
                       activeOpacity={0.75}
                     >
-                      <Text style={styles.trackTitle} numberOfLines={2}>{track.titleVi}</Text>
+                      <Text style={[styles.trackTitle, { color: colors.text }]} numberOfLines={2}>{track.titleVi}</Text>
                       <View style={styles.badgeRow}>
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>
+                        <View style={[styles.badge, { backgroundColor: colors.surfaceSoft }]}>
+                          <Text style={[styles.badgeText, { color: colors.textMuted }]}>
                             {CATEGORY_LABELS[track.category] ?? track.category}
                           </Text>
                         </View>
-                        <View style={[styles.badge,
-                          track.hasLyrics ? styles.badgeLyrics : styles.badgeInstr]}>
-                          <Text style={styles.badgeText}>
+                        <View style={[styles.badge, track.hasLyrics ? styles.badgeLyrics : styles.badgeInstr]}>
+                          <Text style={[styles.badgeText, track.hasLyrics ? { color: '#B45309' } : { color: '#0369A1' }]}>
                             {track.hasLyrics ? 'Có lời' : 'Không lời'}
                           </Text>
                         </View>
@@ -305,29 +441,42 @@ export default function MusicSelectScreen() {
 
                     {/* Action */}
                     {isSelected ? (
-                      <View style={styles.checkBadge}>
+                      <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
                         <Text style={styles.checkText}>✓</Text>
                       </View>
+                    ) : !track.isUnlocked ? (
+                      // Bài chưa unlock — hiện nút "Mở khóa X đ"
+                      <TouchableOpacity
+                        style={[styles.unlockBtn, { borderColor: colors.primary }]}
+                        onPress={() => handleUnlock(track)}
+                        disabled={isUnlocking === track.id}
+                      >
+                        {isUnlocking === track.id ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <Text style={[styles.unlockBtnText, { color: colors.primary }]}>🔓 {track.pointCost}đ</Text>
+                        )}
+                      </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
-                        style={styles.selectBtn}
+                        style={[styles.selectBtn, { backgroundColor: colors.surfaceSoft }]}
                         onPress={() => handleSelectTrack(track)}
                       >
-                        <Text style={styles.selectBtnText}>Chọn</Text>
+                        <Text style={[styles.selectBtnText, { color: colors.textMuted }]}>Chọn</Text>
                       </TouchableOpacity>
                     )}
                   </View>
 
                   {/* Preview progress bar */}
                   {isPreviewing && (
-                    <View style={styles.previewBar}>
+                    <View style={[styles.previewBar, { backgroundColor: colors.surfaceSoft }]}>
                       <View style={[
                         styles.previewFill,
-                        { width: `${(countdown / 60) * 100}%` as any },
+                        { backgroundColor: colors.primary, width: `${(countdown / 60) * 100}%` as any },
                       ]} />
                       <View style={styles.previewLabels}>
-                        <Text style={styles.previewLabelText}>🎧 Đang nghe thử</Text>
-                        <Text style={styles.previewLabelText}>{countdown}s còn lại</Text>
+                        <Text style={[styles.previewLabelText, { color: colors.text }]}>🎧 Đang nghe thử</Text>
+                        <Text style={[styles.previewLabelText, { color: colors.textMuted }]}>{countdown}s còn lại</Text>
                       </View>
                     </View>
                   )}
@@ -340,16 +489,16 @@ export default function MusicSelectScreen() {
       )}
 
       {/* Bottom confirm */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom + 16, 32) }]}>
         {selectedTrack && (
-          <View style={styles.selectedBanner}>
-            <Text style={styles.selectedBannerText} numberOfLines={1}>
+          <View style={[styles.selectedBanner, { backgroundColor: colors.surfaceSoft }]}>
+            <Text style={[styles.selectedBannerText, { color: colors.primary }]} numberOfLines={1}>
               🎵  {selectedTrack.titleVi}
             </Text>
           </View>
         )}
         <TouchableOpacity
-          style={[styles.confirmBtn, !selectedTrack && styles.confirmBtnGray]}
+          style={[styles.confirmBtn, { backgroundColor: colors.primary }, !selectedTrack && styles.confirmBtnGray]}
           onPress={handleConfirm}
           activeOpacity={0.85}
         >
@@ -360,6 +509,44 @@ export default function MusicSelectScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Mascot Modal ── */}
+      <Modal transparent animationType="fade" visible={modalConfig.visible} onRequestClose={() => setModalConfig(prev => ({ ...prev, visible: false }))}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setModalConfig(prev => ({ ...prev, visible: false }))}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
+            {/* Mascot */}
+            {modalConfig.mascot && (
+              <View style={[styles.mascotWrap, { backgroundColor: colors.surfaceSoft }]}>
+                <Image
+                  source={MASCOT_IMAGES[modalConfig.mascot]}
+                  style={styles.mascotImg}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{modalConfig.title}</Text>
+            <Text style={[styles.modalMessage, { color: colors.text }]}>{modalConfig.message}</Text>
+
+            <View style={styles.modalActions}>
+              {modalConfig.cancelText && (
+                <TouchableOpacity
+                  style={[styles.modalBtnCancel, { backgroundColor: colors.surfaceSoft }]}
+                  onPress={() => setModalConfig(prev => ({ ...prev, visible: false }))}
+                >
+                  <Text style={[styles.modalBtnCancelText, { color: colors.textMuted }]}>{modalConfig.cancelText}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.modalBtnConfirm}
+                onPress={() => modalConfig.onConfirm ? modalConfig.onConfirm() : setModalConfig(prev => ({ ...prev, visible: false }))}
+              >
+                <Text style={styles.modalBtnConfirmText}>{modalConfig.confirmText || 'OK'}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedScreen>
   );
 }
@@ -474,7 +661,6 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'android' ? 32 : 16,
     paddingTop: 12,
     borderTopWidth: 1, borderTopColor: COLORS.border,
     gap: 10, backgroundColor: COLORS.surface,
@@ -492,4 +678,59 @@ const styles = StyleSheet.create({
   },
   confirmBtnGray: { backgroundColor: '#9DB0A0', shadowOpacity: 0 },
   confirmBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  // Points & Unlock
+  pointsBadge: {
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pointsText: { fontSize: 13, fontWeight: '700' },
+  limitBar: {
+    marginHorizontal: 16, marginBottom: 6,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  limitText: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
+  unlockBtn: {
+    borderWidth: 1.5, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+    alignItems: 'center', justifyContent: 'center',
+    minWidth: 72,
+  },
+  unlockBtnText: { fontSize: 11, fontWeight: '700' },
+
+  // Modal
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center', alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%', borderRadius: 24,
+    padding: 24, alignItems: 'center',
+    elevation: 10, shadowColor: '#000',
+    shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 },
+  },
+  mascotWrap: {
+    width: 100, height: 100,
+    marginTop: -50, marginBottom: 16,
+    borderRadius: 50,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 5, shadowColor: '#000',
+    shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+  },
+  mascotImg: { width: 90, height: 90 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  modalMessage: { fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  modalActions: { flexDirection: 'row', gap: 12, width: '100%' },
+  modalBtnCancel: {
+    flex: 1, height: 48, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  modalBtnCancelText: { fontSize: 15, fontWeight: '600' },
+  modalBtnConfirm: {
+    flex: 1, height: 48, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: COLORS.green.main,
+  },
+  modalBtnConfirmText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });

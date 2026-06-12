@@ -1,6 +1,6 @@
 import { AppText as Text } from '../../src/components/common/AppText';
 import React, { useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Alert, Modal, TextInput } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Alert, Modal, TextInput, Text as RNText } from 'react-native';
 import { router } from 'expo-router';
 import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { PlantProgress } from '../../src/components/plant/PlantProgress';
@@ -103,21 +103,21 @@ export default function Home() {
   // User chưa có cây ảo
   if (hasNoPlant) {
     return (
-      <Screen scroll={false} padded>
-        <View style={styles.noPlantContainer}>
+      <ThemedScreen showNightEffects>
+        <View style={[styles.noPlantContainer, { padding: 20 }]}>
           <Companion context="no_plant" style={{ marginBottom: 16 }} />
-          <Text style={styles.noPlantTitle}>Bạn chưa có cây nào</Text>
-          <Text style={styles.noPlantDesc}>
+          <RNText style={[styles.noPlantTitle, { color: colors.text }]}>Bạn chưa có cây nào</RNText>
+          <RNText style={[styles.noPlantDesc, { color: colors.textMuted }]}>
             Hãy chọn một loại hoa để bắt đầu hành trình chăm sóc của bạn.
-          </Text>
+          </RNText>
           <TouchableOpacity
-            style={styles.startBtn}
+            style={[styles.startBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push('/select-flower')}
           >
-            <Text style={styles.startBtnText}>🌸 Chọn hoa để bắt đầu</Text>
+            <RNText style={[styles.startBtnText, { color: colors.surface }]}>🌸 Chọn hoa để bắt đầu</RNText>
           </TouchableOpacity>
         </View>
-      </Screen>
+      </ThemedScreen>
     );
   }
 
