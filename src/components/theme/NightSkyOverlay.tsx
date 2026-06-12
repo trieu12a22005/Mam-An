@@ -17,6 +17,51 @@ function generateStars(count: number) {
   return stars;
 }
 
+// ── Component Sao Lấp Lánh ───────────────────────────────────────────────────
+const TwinklingStar: React.FC<{ star: { x: number; y: number; size: number; opacity: number } }> = ({ star }) => {
+  const anim = useRef(new Animated.Value(star.opacity)).current;
+
+  useEffect(() => {
+    // Chỉ khoảng 60% số sao sẽ lấp lánh để tối ưu hiệu năng và nhìn tự nhiên
+    if (Math.random() > 0.4) {
+      // Delay ngẫu nhiên lúc bắt đầu để các sao không lấp lánh cùng nhịp
+      const startDelay = Math.random() * 3000;
+      setTimeout(() => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, {
+              toValue: star.opacity * 0.1, // mờ đi
+              duration: 800 + Math.random() * 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: star.opacity * 1.5, // sáng lấp lánh hơn ban đầu 1 xíu
+              duration: 800 + Math.random() * 1500,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }, startDelay);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Animated.View
+      style={[
+        styles.star,
+        {
+          left: star.x,
+          top: star.y,
+          width: star.size,
+          height: star.size,
+          borderRadius: star.size / 2,
+          opacity: anim,
+        },
+      ]}
+    />
+  );
+};
+
 // ── Component Sao Băng Độc Lập ────────────────────────────────────────────────
 const ShootingStar: React.FC<{ minInterval: number; maxInterval: number; initialDelay: number }> = ({ 
   minInterval, maxInterval, initialDelay 
@@ -117,11 +162,11 @@ interface Props {
 }
 
 export const NightSkyOverlay: React.FC<Props> = ({ intensity = 'normal' }) => {
-  const starCount = intensity === 'low' ? 30 : 80;
+  const starCount = intensity === 'low' ? 70 : 150;
   
   // Tăng tần suất sao băng xuất hiện để dễ có hiệu ứng nhiều sao cùng lúc
-  const minInterval = intensity === 'low' ? 15_000 : 5_000;
-  const maxInterval = intensity === 'low' ? 30_000 : 15_000;
+  const minInterval = intensity === 'low' ? 10_000 : 5_000;
+  const maxInterval = intensity === 'low' ? 25_000 : 15_000;
   
   // Tạo số lượng sao băng hoạt động song song
   const shootingStarsCount = intensity === 'low' ? 2 : 4;
@@ -144,22 +189,9 @@ export const NightSkyOverlay: React.FC<Props> = ({ intensity = 'normal' }) => {
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 0, elevation: 0 }]} pointerEvents="none">
-      {/* Sao tĩnh */}
+      {/* Sao lấp lánh */}
       {stars.map((s, i) => (
-        <View
-          key={`star-${i}`}
-          style={[
-            styles.star,
-            {
-              left: s.x,
-              top: s.y,
-              width: s.size,
-              height: s.size,
-              borderRadius: s.size / 2,
-              opacity: s.opacity,
-            },
-          ]}
-        />
+        <TwinklingStar key={`star-${i}`} star={s} />
       ))}
 
       {/* Sao băng */}

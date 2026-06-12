@@ -4,7 +4,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Platform, Mo
 import { RefreshCw } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { FocusSessionOption } from '../src/types/focusSession.type';
-import { FOCUS_SESSION_OPTIONS } from '../src/constants/focusSessions';
+import { FOCUS_SESSION_OPTIONS, getFocusSessionEmoji } from '../src/constants/focusSessions';
 import { COLORS } from '../src/constants/colors';
 import { useFocusSession } from '../src/hooks/useFocusSession';
 import { useCalmMusic } from '../src/hooks/useCalmMusic';
@@ -148,7 +148,12 @@ export default function CalmSpace() {
           <TouchableOpacity style={styles.backBtn} onPress={handleBackPress}>
             <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
           </TouchableOpacity>
-          <Text style={[styles.modeLabel, { color: colors.text }]} numberOfLines={1}>{selectedOption?.label}</Text>
+          <View style={styles.modeLabelContainer}>
+            <View style={[styles.modeLabelPill, { backgroundColor: colors.surfaceSoft, borderColor: colors.border }]}>
+              <Text style={styles.modeLabelEmoji}>{selectedOption ? getFocusSessionEmoji(selectedOption.type) : '🌿'}</Text>
+              <Text style={[styles.modeLabel, { color: colors.text }]} numberOfLines={1}>{selectedOption?.label}</Text>
+            </View>
+          </View>
           <View style={{ width: 40 }} />
         </View>
 
@@ -299,7 +304,14 @@ const styles = StyleSheet.create({
   intro: { fontSize: 14, color: COLORS.text.secondary, lineHeight: 24, textAlign: 'center', marginBottom: 4 },
 
   runHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
-  modeLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: COLORS.text.primary, textAlign: 'center' },
+  modeLabelContainer: { flex: 1, alignItems: 'center' },
+  modeLabelPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1,
+  },
+  modeLabelEmoji: { fontSize: 16 },
+  modeLabel: { fontSize: 15, fontWeight: '600', color: COLORS.text.primary },
   musicBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.green[50], borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, minWidth: 72, gap: 2 },
   musicIcon: { fontSize: 18 },
   musicLabel: { fontSize: 10, color: COLORS.text.muted, fontWeight: '500' },

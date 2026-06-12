@@ -1,5 +1,5 @@
 import { AppText as Text } from '../common/AppText';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { FocusSessionType } from '../../types/focusSession.type';
 import { formatCountdown, formatSessionTitle, getRandomFocusMessage } from '../../constants/focusSessions';
@@ -19,13 +19,36 @@ export const FocusTimer: React.FC<Props> = ({
 }) => {
   const { colors, isNight } = useTimeTheme();
 
-  // Lấy message ngẫu nhiên 1 lần khi mount (không đổi trong phiên)
-  const hintRef = useRef(getRandomFocusMessage(sessionType));
+  // Message thay đổi mỗi 30s
+  const [hint, setHint] = useState(() => getRandomFocusMessage(sessionType));
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setHint((prev) => {
+        let nextHint = getRandomFocusMessage(sessionType);
+        // Tránh bị lặp lại cùng một câu liên tiếp
+        let attempts = 0;
+        while (nextHint === prev && attempts < 5) {
+          nextHint = getRandomFocusMessage(sessionType);
+          attempts++;
+        }
+        return nextHint;
+      });
+    }, 30000); // Đổi mỗi 30 giây
+
+    return () => clearInterval(interval);
+  }, [sessionType, isPaused]);
   const sessionTitle = formatSessionTitle(sessionType, totalSeconds);
   const pct = Math.round(progress * 100);
 
   return (
     <View style={styles.wrapper}>
+      {/* Câu động viên */}
+      <View style={styles.hintContainer}>
+        <Text style={[styles.hint, isNight && { color: colors.textMuted }]}>"{hint}"</Text>
+      </View>
+
       {/* Tiêu đề phiên */}
       <Text style={[styles.sessionTitle, { color: colors.textMuted }]}>{sessionTitle}</Text>
 
@@ -44,9 +67,6 @@ export const FocusTimer: React.FC<Props> = ({
         </View>
         <Text style={[styles.pctLabel, { color: colors.textMuted }]}>{pct}%</Text>
       </View>
-
-      {/* Câu động viên */}
-      <Text style={[styles.hint, isNight && { color: colors.textMuted }]}>{hintRef.current}</Text>
     </View>
   );
 };
@@ -107,12 +127,18 @@ const styles = StyleSheet.create({
   },
 
   // Câu động viên
+  hintContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
   hint: {
-    fontSize: 12,
+    fontSize: 14,
     color: COLORS.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
     fontStyle: 'italic',
-    marginTop: 6,
+    fontWeight: '500',
   },
 });
