@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { usePlans, useMyCurrentPlan } from '../src/hooks/usePlans';
 import { PlanCode, ServicePlan } from '../src/types/plan.type';
 import { useRouter } from 'expo-router';
-import { CheckCircle } from 'lucide-react-native';
+import { CheckCircle, Home } from 'lucide-react-native';
 import { Companion } from '../src/components/common/Companion';
 
 export default function PackagesScreen() {
@@ -174,15 +174,22 @@ export default function PackagesScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Companion context="upgrade_companion" style={{ marginBottom: 16 }} />
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.homeBtn} onPress={() => router.push('/(tabs)/home' as any)}>
+          <Home size={22} color="#2D3A33" />
+        </TouchableOpacity>
+      </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Companion context="upgrade_companion" style={{ marginBottom: 16 }} />
       <Text style={styles.title}>Chọn hành trình phù hợp với bạn</Text>
       <Text style={styles.subtitle}>
         Bắt đầu miễn phí với cây ảo, hoặc nâng cấp để có một bé hoa thật được nhà vườn chăm sóc mỗi ngày 🌱
       </Text>
 
       {plans?.map(renderPlanCard)}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -196,9 +203,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 50, // SafeArea roughly
+    paddingBottom: 4,
+    zIndex: 10,
+  },
+  homeBtn: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'flex-start',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   content: {
     padding: 20,
-    paddingTop: 36,
+    paddingTop: 12,
     paddingBottom: 40,
   },
   title: {

@@ -1,7 +1,11 @@
 import { AppText as Text } from '../src/components/common/AppText';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Platform, Modal } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Platform, Modal, Image } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
+
+const MASCOT_IMAGES = {
+  thinking: require('../assets/thinking.png'),
+};
 import { router, useFocusEffect } from 'expo-router';
 import { FocusSessionOption } from '../src/types/focusSession.type';
 import { FOCUS_SESSION_OPTIONS, getFocusSessionEmoji } from '../src/constants/focusSessions';
@@ -211,15 +215,19 @@ export default function CalmSpace() {
 
         <Modal visible={showExitModal} transparent animationType="fade">
           <View style={styles.confirmOverlay}>
-            <View style={styles.confirmSheet}>
-              <Text style={styles.confirmEmoji}>🌱</Text>
-              <Text style={styles.confirmTitle}>Bạn muốn rời phiên này?</Text>
-              <Text style={styles.confirmMsg}>Khoảng thời gian bạn đã ở cùng cây vẫn đáng quý.</Text>
-              <TouchableOpacity style={styles.confirmStay} onPress={handleResume}>
-                <Text style={styles.confirmStayText}>Ở lại</Text>
+            <View style={[styles.confirmSheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.mascotWrap, { backgroundColor: colors.surfaceSoft }]}>
+                <Image source={MASCOT_IMAGES.thinking} style={styles.mascotImg} resizeMode="contain" />
+              </View>
+              <Text style={[styles.confirmTitle, { color: colors.text }]}>Mầm An đang đợi bạn</Text>
+              <Text style={[styles.confirmMsg, { color: colors.text }]}>
+                Khoảng thời gian nhỏ nhoi này cũng rất đáng quý. Bạn có chắc chắn muốn kết thúc sớm không?
+              </Text>
+              <TouchableOpacity style={[styles.confirmStay, { backgroundColor: colors.primary }]} onPress={handleResume}>
+                <Text style={styles.confirmStayText}>Ở lại với cây</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmLeave} onPress={() => { setShowExitModal(false); cancelSession(); }}>
-                <Text style={styles.confirmLeaveText}>Kết thúc phiên</Text>
+              <TouchableOpacity style={[styles.confirmLeave, { borderColor: colors.border }]} onPress={() => { setShowExitModal(false); cancelSession(); }}>
+                <Text style={[styles.confirmLeaveText, { color: colors.textMuted }]}>Kết thúc phiên</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -339,11 +347,12 @@ const styles = StyleSheet.create({
   ctrlBtnEnd: { borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   ctrlBtnEndText: { color: COLORS.text.muted, fontSize: 14, fontWeight: '500' },
 
-  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 28 },
-  confirmSheet: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 28, width: '100%', alignItems: 'center', gap: 12 },
-  confirmEmoji: { fontSize: 40 },
-  confirmTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text.primary, textAlign: 'center' },
-  confirmMsg: { fontSize: 13, color: COLORS.text.secondary, textAlign: 'center', lineHeight: 22 },
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 28 },
+  confirmSheet: { borderRadius: 24, padding: 32, width: '100%', alignItems: 'center', gap: 12, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } },
+  mascotWrap: { width: 100, height: 100, marginTop: -50, marginBottom: 8, borderRadius: 50, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  mascotImg: { width: 90, height: 90 },
+  confirmTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  confirmMsg: { fontSize: 13, textAlign: 'center', lineHeight: 22 },
   confirmStay: { width: '100%', height: 48, backgroundColor: COLORS.green.main, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   confirmStayText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   confirmLeave: { width: '100%', height: 44, borderRadius: 14, borderWidth: 1.5, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },

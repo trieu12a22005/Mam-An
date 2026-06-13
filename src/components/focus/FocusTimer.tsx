@@ -60,13 +60,7 @@ export const FocusTimer: React.FC<Props> = ({
         {isPaused ? '⏸ Đang tạm dừng' : '● Đang chạy'}
       </Text>
 
-      {/* Progress bar + % */}
-      <View style={styles.progressRow}>
-        <View style={styles.barBg}>
-          <View style={[styles.barFill, { width: `${pct}%` as any }]} />
-        </View>
-        <Text style={[styles.pctLabel, { color: colors.textMuted }]}>{pct}%</Text>
-      </View>
+
     </View>
   );
 };

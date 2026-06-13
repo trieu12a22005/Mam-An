@@ -34,11 +34,12 @@ const Divider = () => {
 
 const SettingRow: React.FC<{
   label: string;
-  icon: string;
+  icon?: string;
+  imageIcon?: any;
   right?: React.ReactNode;
   onPress?: () => void;
   danger?: boolean;
-}> = ({ label, icon, right, onPress, danger }) => {
+}> = ({ label, icon, imageIcon, right, onPress, danger }) => {
   const { colors } = useTimeTheme();
   return (
     <TouchableOpacity
@@ -48,7 +49,11 @@ const SettingRow: React.FC<{
       disabled={!onPress}
     >
       <View style={[styles.settingIconWrap, { backgroundColor: colors.background }, danger && styles.settingIconDanger]}>
-        <Text style={styles.settingIcon}>{icon}</Text>
+        {imageIcon ? (
+          <Image source={imageIcon} style={{ width: 24, height: 24 }} resizeMode="contain" />
+        ) : (
+          <Text style={styles.settingIcon}>{icon}</Text>
+        )}
       </View>
       <Text style={[styles.settingLabel, { color: colors.text }, danger && { color: '#EF4444' }]}>{label}</Text>
       <View style={styles.settingRight}>
@@ -367,6 +372,12 @@ export default function Profile() {
                   thumbColor={'#fff'}
                 />
               }
+            />
+            <Divider />
+            <SettingRow
+              imageIcon={require('../../assets/journey.png')}
+              label="Hành trình trưởng thành"
+              onPress={() => router.push('/achievements' as any)}
             />
             <Divider />
             <SettingRow

@@ -1,6 +1,7 @@
 import { AppText as Text } from '../common/AppText';
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Image } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { PlantStatus } from '../../types/plant.type';
 import { COLORS } from '../../constants/colors';
 
@@ -76,6 +77,34 @@ export const GrowingPlant: React.FC<Props> = ({
             opacity: glowOpacity,
           }}
         />
+
+        {/* Circular Progress Bar (SVG) */}
+        <View style={{ position: 'absolute', width: PLANT_SIZE + 24, height: PLANT_SIZE + 24 }}>
+          <Svg width="100%" height="100%" viewBox={`0 0 ${PLANT_SIZE + 24} ${PLANT_SIZE + 24}`}>
+            {/* Vòng nền mờ */}
+            <Circle
+              cx={(PLANT_SIZE + 24) / 2}
+              cy={(PLANT_SIZE + 24) / 2}
+              r={PLANT_SIZE / 2 + 6}
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth={4}
+              fill="none"
+            />
+            {/* Vòng tiến trình */}
+            <Circle
+              cx={(PLANT_SIZE + 24) / 2}
+              cy={(PLANT_SIZE + 24) / 2}
+              r={PLANT_SIZE / 2 + 6}
+              stroke={COLORS.green.main}
+              strokeWidth={6}
+              fill="none"
+              strokeDasharray={2 * Math.PI * (PLANT_SIZE / 2 + 6)}
+              strokeDashoffset={2 * Math.PI * (PLANT_SIZE / 2 + 6) * (1 - Math.max(0, Math.min(1, progress)))}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${(PLANT_SIZE + 24) / 2} ${(PLANT_SIZE + 24) / 2})`}
+            />
+          </Svg>
+        </View>
 
         {/* Ảnh hoặc emoji */}
         {imageUrl ? (
