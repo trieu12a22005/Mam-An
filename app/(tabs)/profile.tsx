@@ -12,6 +12,7 @@ import { PlantAvatar } from '../../src/components/plant/PlantAvatar';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useVirtualPlant } from '../../src/hooks/usePlant';
+import { useMyEntitlements } from '../../src/hooks/usePlans';
 import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
 import { AppThemeMode } from '../../src/types/theme.type';
 import { COLORS } from '../../src/constants/colors';
@@ -154,6 +155,7 @@ const ChoiceCard: React.FC<{
 export default function Profile() {
   const { user, logout } = useAuth();
   const { plant, isLoading } = useVirtualPlant();
+  const { data: entitlements } = useMyEntitlements();
   const { settings, toggleTimeTheme, toggleNightEffects, setThemeMode, colors, isNight } = useTimeTheme();
   const [flowerChoice, setFlowerChoice] = useState<'ship' | 'donate' | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(true);
@@ -268,36 +270,6 @@ export default function Profile() {
             </View>
           )}
 
-          {/* ── Package card ── */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.textMuted }]}>🌻 Gói hoa đồng hành</Text>
-            <View style={styles.packageBanner}>
-              <Text style={styles.packageBannerTitle}>Hoa Hướng Dương Đồng Hành</Text>
-              <Text style={styles.packageBannerDesc}>
-                Sau khi hoa nở, bạn có thể chọn ship về nhà hoặc tặng lại cho người cần.
-              </Text>
-            </View>
-
-            <Text style={[styles.choiceLabel, { color: colors.textMuted }]}>Lựa chọn của bạn sau khi hoa nở</Text>
-            <ChoiceCard
-              selected={flowerChoice === 'ship'}
-              onSelect={() => setFlowerChoice('ship')}
-              emoji="📦"
-              title="Ship về nhà"
-              subtitle="Chúng tôi sẽ gửi hoa đến địa chỉ của bạn"
-            />
-            <View style={{ height: 10 }} />
-            <ChoiceCard
-              selected={flowerChoice === 'donate'}
-              onSelect={() => setFlowerChoice('donate')}
-              emoji="💚"
-              title="Tặng lại cho người cần"
-              subtitle="Hoa sẽ được trao đến nơi có ý nghĩa hơn"
-            />
-            {flowerChoice && (
-              <Text style={styles.choiceSaved}>✓ Đã lưu lựa chọn của bạn</Text>
-            )}
-          </View>
 
           {/* ── Theme settings card ── */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -385,13 +357,18 @@ export default function Profile() {
               label="Gói dịch vụ của tôi"
               onPress={() => router.push('/packages')}
             />
+            {entitlements?.hasRealPlantOrder && (
+              <>
+                <Divider />
+                <SettingRow
+                  icon="📍"
+                  label="Thông tin nhận cây / quà tặng"
+                  onPress={() => router.push('/shipping-info')}
+                />
+              </>
+            )}
             <Divider />
-            <SettingRow
-              icon="📦"
-              label="Đơn hàng của tôi"
-              onPress={() => router.push('/my-orders')}
-            />
-            <Divider />
+
             <SettingRow icon="ℹ️" label="Về ứng dụng" onPress={() => {}} />
           </View>
 

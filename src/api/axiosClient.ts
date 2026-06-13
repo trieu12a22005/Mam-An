@@ -13,9 +13,7 @@ const CLOUD_URL = 'https://garden-be.vercel.app/api/v1';
 const LOCAL_URL = 'http://192.168.1.199:3000/api/v1';
 
 const getBaseURL = () => {
-  if (CLOUD_URL) return CLOUD_URL;      // ← ưu tiên cloud nếu đã có
-  if (__DEV__) return LOCAL_URL;        // ← fallback local khi dev
-  return 'https://garden-be.vercel.app/api/v1';
+  return LOCAL_URL;
 };
 
 const axiosClient = axios.create({

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlanCode, GiftRecipientType } from '../src/types/plan.type';
 import { useCreateOrder, useSubscribeVirtualPlus } from '../src/hooks/useOrders';
+import { Home } from 'lucide-react-native';
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -73,6 +74,11 @@ export default function CheckoutScreen() {
   if (isVirtualPlus) {
     return (
       <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.replace('/')} style={styles.homeBtn}>
+            <Home color="#2D3A33" size={24} />
+          </TouchableOpacity>
+        </View>
         <View style={styles.card}>
           <Text style={styles.title}>Nâng cấp Mầm Ảo Plus</Text>
           <Text style={styles.subtitle}>Bạn đang yêu cầu nâng cấp tài khoản lên gói Mầm Ảo Plus.</Text>
@@ -91,6 +97,11 @@ export default function CheckoutScreen() {
   if (isRealPlant) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.replace('/')} style={styles.homeBtn}>
+            <Home color="#2D3A33" size={24} />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Thông tin đơn hàng</Text>
         
         <View style={styles.card}>
@@ -186,12 +197,23 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 20,
+  },
+  homeBtn: {
+    padding: 8,
+    backgroundColor: '#E8F3F0',
+    borderRadius: 20,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2D3A33',
     marginBottom: 20,
-    marginTop: 20,
     textAlign: 'center',
   },
   subtitle: {

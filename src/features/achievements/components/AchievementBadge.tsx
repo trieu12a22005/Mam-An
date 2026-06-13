@@ -57,8 +57,8 @@ export const AchievementBadge: React.FC<Props> = ({ emoji, unlocked, size = 52 }
             width: circleSize,
             height: circleSize,
             borderRadius: circleSize / 2,
-            backgroundColor: unlocked ? COLORS.green[100] : '#F1F1F1',
-            borderColor: unlocked ? COLORS.green[300] : '#E0E0E0',
+            backgroundColor: unlocked ? COLORS.green[100] : 'rgba(255,255,255,0.18)',
+            borderColor: unlocked ? COLORS.green[300] : 'rgba(255,255,255,0.4)',
             transform: [{ scale: scaleAnim }],
           },
         ]}
@@ -66,7 +66,7 @@ export const AchievementBadge: React.FC<Props> = ({ emoji, unlocked, size = 52 }
         <Text
           style={[
             styles.emoji,
-            { fontSize: circleSize * 0.44, opacity: unlocked ? 1 : 0.35 },
+            { fontSize: circleSize * 0.44, opacity: unlocked ? 1 : 0.9 },
           ]}
         >
           {emoji}

@@ -20,6 +20,14 @@ export interface CreateOrderInput {
   packagingOption?: string;
 }
 
+export interface UpdateShippingInfoInput {
+  recipientType?: GiftRecipientType;
+  recipientName?: string;
+  recipientPhone?: string;
+  recipientAddress?: string;
+  recipientNote?: string;
+}
+
 export const orderApi = {
   createOrder: async (input: CreateOrderInput): Promise<Order> => {
     const res = await axiosClient.post<ApiResponse<Order>>("/orders", input);
@@ -40,6 +48,11 @@ export const orderApi = {
     const res = await axiosClient.post<ApiResponse<Order>>("/subscriptions/virtual-plus", {
       paymentMethod: "MANUAL_BANK_TRANSFER",
     });
+    return res.data.metadata;
+  },
+
+  updateShippingInfo: async (id: string, input: UpdateShippingInfoInput): Promise<Order> => {
+    const res = await axiosClient.patch<ApiResponse<Order>>(`/orders/${id}/shipping-info`, input);
     return res.data.metadata;
   },
 };

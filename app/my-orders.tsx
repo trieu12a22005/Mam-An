@@ -40,13 +40,21 @@ export default function MyOrdersScreen() {
         <TouchableOpacity style={styles.button} onPress={() => router.push('/packages')}>
           <Text style={styles.buttonText}>Khám phá các gói dịch vụ</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, { backgroundColor: 'transparent', marginTop: 10 }]} onPress={() => router.replace('/')}>
+          <Text style={[styles.buttonText, { color: '#6B9080' }]}>Trở về vườn</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Đơn hàng của tôi</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Đơn hàng của tôi</Text>
+        <TouchableOpacity style={styles.returnButton} onPress={() => router.replace('/')}>
+          <Text style={styles.returnButtonText}>Trở về vườn</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
@@ -96,11 +104,29 @@ const styles = StyleSheet.create({
     color: '#4A5D53',
     marginBottom: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 10,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2D3A33',
-    padding: 20,
+  },
+  returnButton: {
+    backgroundColor: '#E8F3F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  returnButtonText: {
+    color: '#6B9080',
+    fontWeight: '600',
+    fontSize: 14,
   },
   listContent: {
     paddingHorizontal: 20,

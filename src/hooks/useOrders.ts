@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { orderApi, CreateOrderInput } from "../api/order.api";
+import { orderApi, CreateOrderInput, UpdateShippingInfoInput } from "../api/order.api";
 import { useAuth } from "./useAuth";
 
 export const useCreateOrder = () => {
@@ -47,3 +47,17 @@ export const useOrderDetail = (id: string) => {
     enabled: isAuthenticated && !!id,
   });
 };
+
+export const useUpdateShippingInfo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateShippingInfoInput }) => orderApi.updateShippingInfo(id, input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order-detail", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-entitlements"] });
+    },
+  });
+};
+

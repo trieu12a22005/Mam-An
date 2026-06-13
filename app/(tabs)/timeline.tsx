@@ -7,8 +7,9 @@ import { TimelineItem } from '../../src/components/timeline/TimelineItem';
 import { EmptyState } from '../../src/components/common/EmptyState';
 import { LoadingView } from '../../src/components/common/LoadingView';
 import { Companion } from '../../src/components/common/Companion';
-import { usePlantUpdates } from '../../src/hooks/usePlant';
+import { usePlantUpdates, useVirtualPlant } from '../../src/hooks/usePlant';
 import { useTimeTheme } from '../../src/contexts/TimeThemeContext';
+import { PlantFeedbackSection } from '../../src/components/plant/PlantFeedbackSection';
 
 import { useMyEntitlements } from '../../src/hooks/usePlans';
 import { useRouter } from 'expo-router';
@@ -16,10 +17,12 @@ import { useRouter } from 'expo-router';
 export default function Timeline() {
   const { data: updates = [], isLoading, refetch, isRefetching } = usePlantUpdates();
   const { data: entitlements, isLoading: isLoadingEntitlements } = useMyEntitlements();
+  const { plant } = useVirtualPlant();
   const { colors } = useTimeTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const realPlantId = plant?.realPlant?.id;
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
   if (isLoading || isLoadingEntitlements) return <LoadingView message="Đang tải cập nhật từ nhà vườn..." />;
@@ -79,11 +82,13 @@ export default function Timeline() {
             description="Nhà vườn sẽ gửi hình ảnh cập nhật sau mỗi 2–3 ngày. Hãy quay lại nhé!"
           />
         }
+
         renderItem={({ item, index }) => (
           <TimelineItem
             update={item}
             isFirst={index === 0}
             isLast={index === updates.length - 1}
+            realPlantId={realPlantId}
           />
         )}
       />

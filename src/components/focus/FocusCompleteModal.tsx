@@ -2,6 +2,7 @@ import { AppText as Text } from '../common/AppText';
 import React from 'react';
 import { Modal, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { FocusSessionOption, FocusSessionStatus } from '../../types/focusSession.type';
+import { VirtualPlant } from '../../types/plant.type';
 import { getCompletionMessage } from '../../constants/focusSessions';
 import { COLORS } from '../../constants/colors';
 import { useTimeTheme } from '../../contexts/TimeThemeContext';

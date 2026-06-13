@@ -6,6 +6,7 @@ import { useTimeTheme } from '../../contexts/TimeThemeContext';
 import { COLORS } from '../../constants/colors';
 import { formatDate } from '../../utils/date';
 import { PLANT_STAGES } from '../../constants/plantStages';
+import { PlantFeedbackSection } from '../plant/PlantFeedbackSection';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ interface TimelineItemProps {
   update: PlantUpdate;
   isFirst?: boolean;
   isLast?: boolean;
+  realPlantId?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,6 +61,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   update,
   isFirst = false,
   isLast = false,
+  realPlantId,
 }) => {
   const { colors } = useTimeTheme();
   const stageInfo = PLANT_STAGES[update.status];
@@ -75,46 +78,56 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
         {!isLast && <View style={[styles.line, { backgroundColor: colors.border }]} />}
       </View>
 
-      {/* ── Card ── */}
-      <View style={[
-        styles.card,
-        { backgroundColor: colors.surface },
-        isFirst && { borderWidth: 1.5, borderColor: colors.primarySoft },
-      ]}>
-        {/* Image with error fallback */}
-        <TimelineImage
-          uri={update.imageUrl}
-          fallbackEmoji={stageEmoji}
-          surfaceSoft={colors.surfaceSoft}
-          textMuted={colors.textMuted}
-        />
+      {/* ── Card & Feedback Area ── */}
+      <View style={{ flex: 1, paddingBottom: isFirst ? 24 : 0 }}>
+        {/* ── Card ── */}
+        <View style={[
+          styles.card,
+          { backgroundColor: colors.surface },
+          isFirst && { borderWidth: 1.5, borderColor: colors.primarySoft, marginBottom: 0 },
+        ]}>
+          {/* Image with error fallback */}
+          <TimelineImage
+            uri={update.imageUrl}
+            fallbackEmoji={stageEmoji}
+            surfaceSoft={colors.surfaceSoft}
+            textMuted={colors.textMuted}
+          />
 
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Status badge */}
-          <View style={[styles.badge, { backgroundColor: stageColor + '22' }]}>
-            <Text style={[styles.badgeText, { color: stageColor }]}>
-              {stageInfo?.label ?? update.status}
-            </Text>
-          </View>
-
-          {/* Date */}
-          <Text style={[styles.date, { color: colors.textMuted }]}>
-            {formatDate(update.createdAt, 'DD/MM/YYYY')}
-          </Text>
-
-          {/* Note */}
-          {update.note && (
-            <Text style={[styles.note, { color: colors.text }]}>{update.note}</Text>
-          )}
-
-          {/* Health note */}
-          {update.healthNote && (
-            <View style={[styles.healthBox, { backgroundColor: colors.surfaceSoft }]}>
-              <Text style={[styles.healthLabel, { color: colors.primary }]}>🌿 Ghi chú từ nhà vườn</Text>
-              <Text style={[styles.healthNote, { color: colors.text }]}>{update.healthNote}</Text>
+          {/* Content */}
+          <View style={styles.content}>
+            {/* Status badge */}
+            <View style={[styles.badge, { backgroundColor: stageColor + '22' }]}>
+              <Text style={[styles.badgeText, { color: stageColor }]}>
+                {stageInfo?.label ?? update.status}
+              </Text>
             </View>
-          )}
+
+            {/* Date */}
+            <Text style={[styles.date, { color: colors.textMuted }]}>
+              {formatDate(update.createdAt, 'DD/MM/YYYY')}
+            </Text>
+
+            {/* Note */}
+            {update.note && (
+              <Text style={[styles.note, { color: colors.text }]}>{update.note}</Text>
+            )}
+
+            {/* Health note */}
+            {update.healthNote && (
+              <View style={[styles.healthBox, { backgroundColor: colors.surfaceSoft }]}>
+                <Text style={[styles.healthLabel, { color: colors.primary }]}>🌿 Ghi chú từ nhà vườn</Text>
+                <Text style={[styles.healthNote, { color: colors.text }]}>{update.healthNote}</Text>
+              </View>
+            )}
+
+            {/* ── Feedback Section (Latest update only) ── */}
+            {isFirst && realPlantId && (
+              <View style={{ marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <PlantFeedbackSection plantId={realPlantId} updateDate={update.createdAt} />
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </View>

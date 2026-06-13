@@ -1,4 +1,4 @@
-import axiosClient from '../../api/axiosClient';
+import axiosClient from '../api/axiosClient';
 import { Achievement } from '../features/achievements/types/achievement.types';
 
 export interface AchievementApiItem {

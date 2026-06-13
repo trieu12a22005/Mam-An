@@ -23,11 +23,10 @@ export const AchievementCard: React.FC<Props> = ({ achievement }) => {
         {
           backgroundColor: unlocked ? colors.surface : colors.background,
           borderColor: unlocked ? COLORS.green[200] : colors.border,
-          opacity: unlocked ? 1 : 0.75,
         },
       ]}
     >
-      <AchievementBadge emoji={emoji} isUnlocked={unlocked} size={52} />
+      <AchievementBadge emoji={emoji} unlocked={unlocked} size={52} />
 
       <View style={styles.content}>
         {/* Title + pill */}

@@ -74,8 +74,8 @@ export function AchievementScreen() {
       >
         {/* ── Header ── */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={[styles.backIcon, { color: colors.text }]}>←</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/(tabs)')}>
+            <Text style={[styles.backIcon, { color: colors.text }]}>🏠</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Image
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
   backBtn: { padding: 4, width: 40 },
-  backIcon: { fontSize: 22 },
+  backIcon: { fontSize: 20 },
   headerCenter: { flex: 1, alignItems: 'center', gap: 4 },
   headerImage: { width: 120, height: 120, marginBottom: 8 },
   headerTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
